@@ -44,7 +44,7 @@
 
   const disclosure = toc.querySelector(".toc-disclosure");
   const desktopMedia = typeof window.matchMedia === "function"
-    ? window.matchMedia("(min-width: 64rem)")
+    ? window.matchMedia("(min-width: 78rem)")
     : null;
 
   const syncDisclosure = () => {
@@ -61,7 +61,7 @@
     }
   }
 
-  const entries = Array.from(toc.querySelectorAll('a[href^="#"]'))
+  const entries = Array.from(toc.querySelectorAll('a.topic-link[href^="#"]'))
     .map((link) => {
       let id;
       try {
@@ -70,7 +70,7 @@
         return null;
       }
       const heading = document.getElementById(id);
-      return heading && content.contains(heading) && heading.matches("h1, h2, h3")
+      return heading && content.contains(heading) && heading.matches("h3")
         ? { link, heading }
         : null;
     })
@@ -79,13 +79,14 @@
   toc.addEventListener("click", (event) => {
     if (!disclosure || !desktopMedia || desktopMedia.matches) return;
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    const link = event.target.closest("a[href]");
+    const link = event.target.closest('a.topic-link[href^="#"]');
     const target = link && (link.getAttribute("target") || "_self").toLowerCase();
-    if (link && toc.contains(link) && ["_self", "_top", "_parent"].includes(target) &&
+    if (link && entries.some((entry) => entry.link === link) &&
+        ["_self", "_top", "_parent"].includes(target) &&
         link.getAttribute("download") === null) {
       disclosure.open = false;
     }
-    // The browser follows ordinary anchors and chapter links with native history.
+    // The browser follows the local fragment with native scrolling and history.
   });
 
   if (!entries.length) return;
@@ -110,9 +111,7 @@
     entries.forEach(({ link }) => {
       if (link.getAttribute("aria-current") === "location") link.removeAttribute("aria-current");
     });
-    if (current.link.getAttribute("aria-current") !== "page") {
-      current.link.setAttribute("aria-current", "location");
-    }
+    current.link.setAttribute("aria-current", "location");
     active = current;
 
     // Keep the current item visible by moving only the index's own scroll area.

@@ -119,6 +119,8 @@ class OfflineBody(HTMLParser):
         self.active_sections = []
         self.sections = []
         self.id_owners = {}
+        self.details_depth = 0
+        self.folded_headings = set()
 
     def _image(self, src: str) -> str:
         if src.startswith('data:image/'):
@@ -154,6 +156,8 @@ class OfflineBody(HTMLParser):
             owner = identifier if 'prerequisite' in classes else next(
                 (section['id'] for section in reversed(self.active_sections) if 'prerequisite' in section['classes']), None)
             self.id_owners[identifier] = owner
+            if tag == 'h3' and self.details_depth:
+                self.folded_headings.add(identifier)
         for name, value in attrs:
             if name.startswith('on') or (name == 'style' and re.search(r'url\s*\(|@import', value or '', re.I)):
                 raise ValueError(f'正文不支持脚本事件或外部样式资源：{name}')
@@ -207,6 +211,8 @@ class OfflineBody(HTMLParser):
                 for section in self.active_sections:
                     if 'exercise' in section['classes']:
                         section['solution'] = True
+        if tag == 'details':
+            self.details_depth += 1
         self.output.append('<' + tag + ''.join(
             f' {name}' if value is None else f' {name}="{escape(value, quote=True)}"'
             for name, value in values.items()
@@ -218,6 +224,8 @@ class OfflineBody(HTMLParser):
             self.handle_endtag(tag)
 
     def handle_endtag(self, tag):
+        if tag == 'details':
+            self.details_depth = max(0, self.details_depth - 1)
         if tag == 'section' and self.active_sections:
             section = self.active_sections.pop()
             section['end'] = len(self.output) + 1
@@ -253,11 +261,12 @@ class OfflineBody(HTMLParser):
 class PageLinks(HTMLParser):
     """Route original fragment links to their extracted offline page."""
 
-    def __init__(self, current_page: str, locations: dict, lesson_pages=None):
+    def __init__(self, current_page: str, locations: dict, lesson_pages=None, new_tab_pages=None):
         super().__init__(convert_charrefs=False)
         self.current_page = current_page
         self.locations = locations
         self.lesson_pages = set(lesson_pages or ())
+        self.new_tab_pages = self.lesson_pages | set(new_tab_pages or ())
         self.output = []
         self.skip_return = False
 
@@ -290,10 +299,10 @@ class PageLinks(HTMLParser):
                 if fragment_page != self.current_page:
                     relative = posixpath.relpath(fragment_page, posixpath.dirname(self.current_page) or '.')
                     values[name] = quote(relative, safe='/') + '#' + quote(fragment_id, safe='')
-            if destination in self.lesson_pages:
+            if destination in self.new_tab_pages:
                 values['target'] = '_blank'
                 values['rel'] = ' '.join(sorted(set(values.get('rel', '').split()) | {'noopener', 'noreferrer'}))
-                values.setdefault('title', '在新标签页打开小课堂')
+                values.setdefault('title', '在新标签页打开小课堂' if destination in self.lesson_pages else '在新标签页打开章节')
             else:
                 values['target'] = '_self'
             self.output.append('<a' + ''.join(
@@ -339,7 +348,7 @@ class ChapterPages(HTMLParser):
 
     VOID = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'}
 
-    def __init__(self, index_path: str, folder: str):
+    def __init__(self, index_path: str, folder: str, reserved_ids=()):
         super().__init__(convert_charrefs=False)
         self.current = index_path
         self.folder = folder
@@ -347,6 +356,7 @@ class ChapterPages(HTMLParser):
         self.chapters = []
         self.id_pages = {}
         self.stack = []
+        self.reserved_ids = set(reserved_ids)
 
     def handle_starttag(self, tag, attrs):
         values = dict(attrs)
@@ -395,6 +405,16 @@ class ChapterPages(HTMLParser):
         self.close()
         if self.stack:
             raise ValueError('正文 HTML 容器未闭合，不能拆成独立章节')
+        if not self.chapters:
+            identifier = 'body-chapter'
+            while identifier in self.reserved_ids or identifier in self.id_pages:
+                identifier += '-1'
+            path = f'{self.folder}/chapter-01.html'
+            self.groups[path] = [f'<h2 id="{identifier}">正文</h2>', *self.groups[self.current]]
+            self.groups[self.current] = []
+            self.id_pages = {key: path for key in self.id_pages}
+            self.id_pages[identifier] = path
+            self.chapters.append({'id': identifier, 'path': path})
         return {path: ''.join(tokens) for path, tokens in self.groups.items()}
 
 
@@ -462,8 +482,19 @@ def _compile_pages(source: Path, target: Path, title: str | None,
     course_html = ''.join(main_tokens)
     index_header = re.search(r'<header\b.*?</header>', course_html, re.S).group(0)
     course_body = re.search(r'<main\b[^>]*>(.*)</main>', course_html, re.S).group(1)
-    splitter = ChapterPages(target.name, chapter_folder)
+    splitter = ChapterPages(target.name, chapter_folder, parser.ids)
     groups = splitter.split(course_body)
+    # The entry page is only a chapter directory. Keep any manuscript preface
+    # immediately after the first chapter heading, including its anchor targets.
+    first_path = splitter.chapters[0]['path']
+    introduction = groups[target.name]
+    if introduction.strip():
+        heading = re.search(r'<h2(?:\s[^>]*)?>.*?</h2>', groups[first_path], re.S)
+        groups[first_path] = groups[first_path][:heading.end()] + introduction + groups[first_path][heading.end():]
+        for identifier, path in splitter.id_pages.items():
+            if path == target.name:
+                splitter.id_pages[identifier] = first_path
+    groups[target.name] = ''
     locations = {identifier: lesson_paths[owner] if owner else splitter.id_pages.get(identifier, target.name)
                  for identifier, owner in parser.id_owners.items()}
     lesson_pages = set(lesson_paths.values())
@@ -488,17 +519,9 @@ def _compile_pages(source: Path, target: Path, title: str | None,
             yield token
             yield from flatten(token.get('children', []))
 
-    # Rebuild hierarchy after filtering. A lesson h2 must not steal following
-    # course h3 topics from their actual course chapter.
-    course_outline, stack = [], []
-    for token in flatten(toc_tokens):
-        if parser.id_owners.get(token['id']) is not None:
-            continue
-        item = dict(token, children=[])
-        while stack and stack[-1]['level'] >= item['level']:
-            stack.pop()
-        (stack[-1]['children'] if stack else course_outline).append(item)
-        stack.append(item)
+    course_topics = [token for token in flatten(toc_tokens)
+                     if token['level'] == 3 and parser.id_owners.get(token['id']) is None
+                     and token['id'] not in parser.folded_headings]
 
     def page_href(destination, current_page, identifier=None):
         suffix = '#' + quote(identifier, safe='') if identifier else ''
@@ -507,23 +530,20 @@ def _compile_pages(source: Path, target: Path, title: str | None,
         relative = posixpath.relpath(destination, posixpath.dirname(current_page) or '.')
         return quote(relative, safe='/') + suffix
 
-    def chapter_index(tokens, current_page):
+    def chapter_index(current_page):
         items = []
-        for token in tokens:
-            children = chapter_index(token.get('children', []), current_page)
-            destination = locations[token['id']]
-            href = page_href(destination, current_page, token['id'])
-            kind = 'chapter-link' if token['level'] == 2 else 'topic-link'
-            active = ' aria-current="page"' if kind == 'chapter-link' and destination == current_page else ''
-            items.append(f'<li><a class="{kind}" href="{href}"{active}>{escape(unescape(token["name"]))}</a>{children}</li>')
+        for token in course_topics:
+            if locations[token['id']] == current_page:
+                href = page_href(current_page, current_page, token['id'])
+                items.append(f'<li><a class="topic-link" href="{href}">{escape(unescape(token["name"]))}</a></li>')
         return '<ul>' + ''.join(items) + '</ul>' if items else ''
 
     def layout(current_page, page_content):
-        toc = chapter_index(course_outline, current_page)
+        toc = chapter_index(current_page) if current_page != target.name else ''
         sidebar = (
-            '<aside class="reader-sidebar" aria-label="章节索引">'
-            '<nav class="toc" aria-label="章节目录"><details class="toc-disclosure" open>'
-            f'<summary>章节目录</summary>{toc}</details></nav></aside>'
+            '<aside class="reader-sidebar" aria-label="本章小节索引">'
+            '<nav class="toc" aria-label="本章小节"><details class="toc-disclosure" open>'
+            f'<summary>本章小节</summary>{toc}</details></nav></aside>'
         ) if toc else ''
         layout_class = 'reader-layout' if toc else 'reader-layout without-index'
         return ('<a class="skip-link" href="#content">跳到正文</a>'
@@ -553,12 +573,12 @@ def _compile_pages(source: Path, target: Path, title: str | None,
             f'<nav class="chapter-pagination" aria-label="章节翻页">{"".join(controls)}</nav></main>'
         )
         documents[target.parent / path] = document(chapter_title + ' · ' + title, layout(path, page_content), 'chapter-page')
-        chapter_list.append(f'<li><a class="chapter-entry" href="{page_href(path, target.name, chapter["id"])}">{escape(chapter_title)}</a></li>')
-    introduction = PageLinks(target.name, locations, lesson_pages).rewrite(groups[target.name])
-    directory = ('<section class="course-directory"><h2>从这里开始阅读</h2><ol class="chapter-list">'
-                 + ''.join(chapter_list) + '</ol></section>') if chapter_list else ''
-    index_header = PageLinks(target.name, locations, lesson_pages).rewrite(index_header)
-    index_content = index_header + f'<main id="content" class="course-content">{introduction}{directory}</main>'
+        chapter_list.append(f'<li><a class="chapter-entry" href="{page_href(path, target.name, chapter["id"])}" target="_blank" rel="noopener noreferrer">{escape(chapter_title)}</a></li>')
+    directory = '<nav class="course-directory" aria-label="课程章节"><ol class="chapter-list">' + ''.join(chapter_list) + '</ol></nav>'
+    index_header = re.sub(r'<p class="subtitle">.*?</p>', '', index_header, count=1, flags=re.S)
+    chapter_pages = {chapter['path'] for chapter in splitter.chapters}
+    index_header = PageLinks(target.name, locations, lesson_pages, chapter_pages).rewrite(index_header)
+    index_content = index_header + f'<main id="content" class="course-content">{directory}</main>'
     documents[target] = document(title, layout(target.name, index_content), 'index-page')
     if source in {path.resolve() for path in documents}:
         raise ValueError('输出页面不能覆盖源稿')

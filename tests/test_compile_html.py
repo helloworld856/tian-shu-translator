@@ -73,6 +73,11 @@ class CompileHTMLTests(unittest.TestCase):
         text = path.read_text(encoding='utf-8')
         return path, text, Page(text)
 
+    def read(self, markdown, **kwargs):
+        stats, _, index = self.build(markdown, **kwargs)
+        self.chapter_path, text, page = self.chapter(index)
+        return stats, text, page
+
     def assert_invalid(self, source, message):
         self.source.write_text(source, encoding='utf-8')
         with self.assertRaisesRegex(ValueError, message):
@@ -80,14 +85,14 @@ class CompileHTMLTests(unittest.TestCase):
         self.assertFalse(self.target.exists(), '校验失败不应留下成品')
 
     def test_code_keeps_indentation_blank_lines_and_literal_dollars(self):
-        _, _, page = self.build('# 一起看向量\n\n```python\ndef f():\n    price = "$5"\n\n    return price\n```\n\n行内代码 `$x$`。')
+        _, _, page = self.read('# 一起看向量\n\n```python\ndef f():\n    price = "$5"\n\n    return price\n```\n\n行内代码 `$x$`。')
         code = ''.join(page.code)
         self.assertIn('    price = "$5"\n\n    return price', code)
         self.assertIn('$x$', code)
         self.assertFalse(any(tag == 'math' for tag, _ in page.tags))
 
     def test_inline_and_display_math_are_rendered_without_network(self):
-        _, text, page = self.build('# 公式\n\n把 $x_1 + x_2$ 放在一起。\n\n$$\n\\frac{1}{2} + \\sqrt{x}\n$$')
+        _, text, page = self.read('# 公式\n\n把 $x_1 + x_2$ 放在一起。\n\n$$\n\\frac{1}{2} + \\sqrt{x}\n$$')
         math = [attrs for tag, attrs in page.tags if tag == 'math']
         self.assertEqual(len(math), 2)
         self.assertTrue(any(attrs.get('display') == 'block' for attrs in math))
@@ -96,17 +101,17 @@ class CompileHTMLTests(unittest.TestCase):
         self.assertFalse(any(attrs.get('src', '').startswith('http') for _, attrs in page.tags))
 
     def test_dollars_inside_escaped_text_and_code_do_not_become_math(self):
-        _, _, page = self.build('# 说明\n\n价格为 \\$5。\n\n```text\n$$\nnot math\n$$\n```')
+        _, _, page = self.read('# 说明\n\n价格为 \\$5。\n\n```text\n$$\nnot math\n$$\n```')
         self.assertIn('$$\nnot math\n$$', ''.join(page.code))
         self.assertFalse(any(tag == 'math' for tag, _ in page.tags))
 
     def test_inline_matrix_preserves_latex_row_separators(self):
-        _, text, _ = self.build('# 矩阵\n\n矩阵 $\\begin{pmatrix}1&2\\\\3&4\\end{pmatrix}$ 有两行。')
+        _, text, _ = self.read('# 矩阵\n\n矩阵 $\\begin{pmatrix}1&2\\\\3&4\\end{pmatrix}$ 有两行。')
         self.assertEqual(text.count('<mtr>'), 2)
         self.assertNotIn('klzzwxh', text)
 
     def test_display_delimiters_in_indented_and_raw_code_remain_literal(self):
-        _, _, page = self.build('# 代码\n\n    $$\n    x + y\n    $$\n\n<pre><code>$$\nx + y\n$$</code></pre>')
+        _, _, page = self.read('# 代码\n\n    $$\n    x + y\n    $$\n\n<pre><code>$$\nx + y\n$$</code></pre>')
         self.assertEqual(''.join(page.code).count('$$'), 4)
         self.assertFalse(any(tag == 'math' for tag, _ in page.tags))
 
@@ -119,7 +124,7 @@ class CompileHTMLTests(unittest.TestCase):
         self.assert_invalid('# 图\n\n<svg><rect fill="url(https://example.com/paint.svg#gradient)"></rect></svg>', '离线|资源|本地')
 
     def test_escaped_dollar_inside_math_does_not_capture_surrounding_text(self):
-        _, text, page = self.build(r'# Prices' + '\n\n' + r'Price $p=\$5$ and $q=2$.')
+        _, text, page = self.read(r'# Prices' + '\n\n' + r'Price $p=\$5$ and $q=2$.')
         self.assertEqual(sum(tag == 'math' for tag, _ in page.tags), 2)
         self.assertIn('</math> and <math', text)
         self.assertNotIn('klzzwxh', text)
@@ -130,9 +135,9 @@ class CompileHTMLTests(unittest.TestCase):
         self.assertIn('<mfrac>', text.split('</h1>', 1)[0])
 
     def test_toc_marker_does_not_create_duplicate_navigation(self):
-        _, text, _ = self.build('# Course\n\n[TOC]\n\n## Lesson\n\nText.')
-        sidebar = Page(text.split('<aside', 1)[1].split('</aside>', 1)[0])
-        lesson_links = [attrs for tag, attrs in sidebar.tags if tag == 'a' and urlsplit(attrs.get('href', '')).fragment == 'lesson']
+        _, text, index = self.build('# Course\n\n[TOC]\n\n## Lesson\n\nText.')
+        self.assertNotIn('<aside', text)
+        lesson_links = [attrs for tag, attrs in index.tags if tag == 'a' and urlsplit(attrs.get('href', '')).fragment == 'lesson']
         self.assertEqual(len(lesson_links), 1)
 
     def test_exercise_without_a_solution_is_not_a_complete_artifact(self):
@@ -142,14 +147,14 @@ class CompileHTMLTests(unittest.TestCase):
         self.assert_invalid('# 练习\n\n<section class="exercise" id="q1"><details class="solution" open><summary>解答</summary>结果</details></section>', '折叠|收起|open')
 
     def test_prerequisite_opens_in_a_new_tab_without_a_return_anchor(self):
-        stats, text, page = self.build('# 术语\n\n正文保持原处。\n\n<a class="term" id="mention" href="#rank">秩</a>\n\n<section class="prerequisite" id="rank" markdown="1">\n## 先理解秩\n\n只属于小课堂的解释 $x^2$。\n</section>')
+        stats, text, page = self.read('# 术语\n\n正文保持原处。\n\n<a class="term" id="mention" href="#rank">秩</a>\n\n<section class="prerequisite" id="rank" markdown="1">\n## 先理解秩\n\n只属于小课堂的解释 $x^2$。\n</section>')
         link = next(attrs for tag, attrs in page.tags if tag == 'a' and attrs.get('class') == 'term')
         self.assertEqual(link.get('target'), '_blank')
         self.assertIn('noopener', link.get('rel', '').split())
         self.assertEqual(stats['lessons'], 1)
         self.assertNotIn('只属于小课堂的解释', text)
         self.assertFalse(any(attrs.get('id') == 'rank' for _, attrs in page.tags))
-        lesson = self.target.parent / unquote(urlsplit(link['href']).path)
+        lesson = self.chapter_path.parent / unquote(urlsplit(link['href']).path)
         self.assertTrue(lesson.is_file())
         lesson_text = lesson.read_text(encoding='utf-8')
         self.assertIn('只属于小课堂的解释', lesson_text)
@@ -157,7 +162,7 @@ class CompileHTMLTests(unittest.TestCase):
         self.assertNotIn('正文保持原处', lesson_text)
 
     def test_multiple_mentions_share_a_lesson_and_cross_lesson_links_are_offline(self):
-        _, _, page = self.build('''# 主文
+        _, _, page = self.read('''# 主文
 
 <a class="term" id="one" href="#rank">秩</a>
 <a class="term" id="two" href="#rank">秩</a>
@@ -177,7 +182,7 @@ class CompileHTMLTests(unittest.TestCase):
         mentions = [attrs for tag, attrs in page.tags if tag == 'a' and attrs.get('class') == 'term']
         self.assertEqual(len(mentions), 2)
         self.assertEqual(mentions[0]['href'], mentions[1]['href'])
-        lesson = self.target.parent / unquote(urlsplit(mentions[0]['href']).path)
+        lesson = self.chapter_path.parent / unquote(urlsplit(mentions[0]['href']).path)
         subpage = Page(lesson.read_text(encoding='utf-8'))
         onward = next(attrs for tag, attrs in subpage.tags if attrs.get('id') == 'three')
         self.assertEqual(onward['target'], '_blank')
@@ -186,8 +191,8 @@ class CompileHTMLTests(unittest.TestCase):
     def test_nested_prerequisites_are_rejected_before_writing(self):
         self.assert_invalid('# 课程\n\n<section class="prerequisite" id="a"><section class="prerequisite" id="b">说明</section></section>', '嵌套|同级')
 
-    def test_sidebar_indexes_course_chapters_but_not_separate_lessons(self):
-        _, text, page = self.build('''# 课程
+    def test_sidebar_indexes_only_current_chapter_subsections(self):
+        _, text, page = self.read('''# 课程
 
 ## 第一章：起步 {#chapter-one}
 
@@ -210,16 +215,18 @@ class CompileHTMLTests(unittest.TestCase):
         self.assertTrue(any(tag == 'aside' and attrs.get('class') == 'reader-sidebar' for tag, attrs in page.tags))
         sidebar = Page(text.split('<aside', 1)[1].split('</aside>', 1)[0])
         destinations = ['#' + urlsplit(attrs['href']).fragment for tag, attrs in sidebar.tags if tag == 'a']
-        self.assertEqual(destinations, ['#chapter-one', '#example', '#chapter-two'])
+        self.assertEqual(destinations, ['#example'])
+        self.assertTrue(all(attrs['href'].startswith('#') for tag, attrs in sidebar.tags if tag == 'a'))
+        self.assertIn('本章小节', ''.join(sidebar.text))
         self.assertTrue(any(tag == 'details' and attrs.get('class') == 'toc-disclosure' for tag, attrs in sidebar.tags))
 
     def test_chapter_index_decodes_math_entities_for_readable_labels(self):
         _, text, _ = self.build('# 课程\n\n## 到达 $(3,2)$\n\n正文。')
-        sidebar = Page(text.split('<aside', 1)[1].split('</aside>', 1)[0])
-        self.assertIn('(3,2)', ''.join(sidebar.text))
+        directory = Page(text.split('<ol class="chapter-list">', 1)[1].split('</ol>', 1)[0])
+        self.assertIn('(3,2)', ''.join(directory.text))
 
-    def test_index_keeps_subtopics_under_their_course_chapter_after_extraction(self):
-        _, text, _ = self.build('''# 课程
+    def test_chapter_keeps_its_subtopics_after_extracting_a_lesson(self):
+        _, text, _ = self.read('''# 课程
 
 ## 第一章 {#one}
 
@@ -240,7 +247,7 @@ class CompileHTMLTests(unittest.TestCase):
 正文。
 ''')
         sidebar = Page(text.split('<aside', 1)[1].split('</aside>', 1)[0])
-        self.assertEqual([('#' + urlsplit(href).fragment, depth) for href, depth in sidebar.link_depths], [('#one', 1), ('#subtopic', 2), ('#two', 1)])
+        self.assertEqual(sidebar.link_depths, [('#subtopic', 1)])
 
     def test_chapters_are_separate_pages_and_index_has_no_chapter_body(self):
         stats, text, index = self.build('''# 课程
@@ -260,12 +267,19 @@ class CompileHTMLTests(unittest.TestCase):
 第二章独有的教学正文。[回看第一章](#sub)
 ''')
         self.assertEqual(stats['chapters'], 2)
-        self.assertIn('这是一段导言', text)
+        self.assertNotIn('这是一段导言', text)
+        self.assertNotIn('<aside', text)
+        for tag, attrs in index.tags:
+            if tag == 'a' and attrs.get('class') == 'chapter-entry':
+                self.assertEqual(attrs['target'], '_blank')
+                self.assertTrue({'noopener', 'noreferrer'} <= set(attrs['rel'].split()))
         self.assertNotIn('第一章独有的教学正文', text)
         self.assertNotIn('第二章独有的教学正文', text)
         first, first_text, first_page = self.chapter(index, 0)
         second, second_text, second_page = self.chapter(index, 1)
         self.assertNotEqual(first, second)
+        self.assertIn('这是一段导言', first_text)
+        self.assertNotIn('这是一段导言', second_text)
         self.assertIn('第一章独有的教学正文', first_text)
         self.assertNotIn('第二章独有的教学正文', first_text)
         self.assertIn('第二章独有的教学正文', second_text)
@@ -301,6 +315,52 @@ class CompileHTMLTests(unittest.TestCase):
         self.assertTrue(lesson.is_file())
         self.assertIn('只在小课堂里的内容', lesson.read_text(encoding='utf-8'))
 
+    def test_preface_anchor_moves_to_the_first_chapter(self):
+        _, text, index = self.build('# 课程\n\n<p id="preface">先读这段说明。</p>\n\n### 阅读方法 {#how}\n\n导言小节。\n\n## 第一章 {#one}\n\n正文。\n\n## 第二章 {#two}\n\n[阅读说明](#preface)')
+        first, first_text, _ = self.chapter(index)
+        second, _, second_page = self.chapter(index, 1)
+        self.assertNotIn('先读这段说明', text)
+        self.assertLess(first_text.index('</h1>'), first_text.index('先读这段说明'))
+        sidebar = Page(first_text.split('<aside', 1)[1].split('</aside>', 1)[0])
+        self.assertEqual(sidebar.link_depths, [('#how', 1)])
+        link = next(attrs for tag, attrs in second_page.tags if tag == 'a' and urlsplit(attrs.get('href', '')).fragment == 'preface')
+        self.assertEqual((second.parent / unquote(urlsplit(link['href']).path)).resolve(), first.resolve())
+
+    def test_manuscript_without_chapters_gets_one_body_chapter(self):
+        stats, text, index = self.build('# 短课\n\n<p id="body-chapter">保留这段教学。</p>\n\n### 试一下 {#try}\n\n例子。')
+        self.assertEqual(stats['chapters'], 1)
+        self.assertNotIn('保留这段教学', text)
+        entries = [attrs for tag, attrs in index.tags if tag == 'a' and attrs.get('class') == 'chapter-entry']
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]['target'], '_blank')
+        _, chapter_text, page = self.chapter(index)
+        ids = [attrs['id'] for _, attrs in page.tags if 'id' in attrs]
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertIn('保留这段教学', chapter_text)
+        self.assertIn('<h1', chapter_text)
+
+    def test_sidebar_omits_headings_inside_folded_answers(self):
+        _, text, _ = self.read('''# 课程
+
+## 第一章
+
+### 自己试一下 {#try}
+
+<section class="exercise" id="q" markdown="1">
+题干。
+
+<details class="solution" markdown="1"><summary>解析</summary>
+
+### 答案是三 {#answer}
+
+三。
+</details>
+</section>
+''')
+        sidebar = Page(text.split('<aside', 1)[1].split('</aside>', 1)[0])
+        self.assertEqual(sidebar.link_depths, [('#try', 1)])
+        self.assertIn('答案是三', text)
+
     def test_chapter_heading_inside_exercise_is_rejected_without_broken_pages(self):
         self.assert_invalid('# 课程\n\n<section class="exercise" id="q" markdown="1">\n## 章节标题\n\n<details class="solution"><summary>解析</summary>答案</details>\n</section>', '顶层|章节')
 
@@ -310,7 +370,7 @@ class CompileHTMLTests(unittest.TestCase):
         link = next(attrs for tag, attrs in header.tags if tag == 'a')
         chapter_path, _, _ = self.chapter(index)
         self.assertEqual((self.target.parent / unquote(urlsplit(link['href']).path)).resolve(), chapter_path.resolve())
-        self.assertNotEqual(link.get('target'), '_blank')
+        self.assertEqual(link.get('target'), '_blank')
 
     def test_svg_hyperlink_to_another_chapter_uses_the_real_file(self):
         _, _, index = self.build('# 课程\n\n## 第一章 {#first}\n\n<svg><a xlink:href="#second"><text>继续</text></a></svg>\n\n## 第二章 {#second}\n\n正文。')
@@ -343,7 +403,7 @@ class CompileHTMLTests(unittest.TestCase):
 
     def test_local_image_is_embedded_so_output_can_move(self):
         (self.directory / '示意图.svg').write_text('<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><circle r="2"/></svg>', encoding='utf-8')
-        _, _, page = self.build('# 图片\n\n![方向示意](示意图.svg)')
+        _, _, page = self.read('# 图片\n\n![方向示意](示意图.svg)')
         image = next(attrs for tag, attrs in page.tags if tag == 'img')
         self.assertTrue(image['src'].startswith('data:image/svg+xml;base64,'))
         self.assertEqual(image['alt'], '方向示意')

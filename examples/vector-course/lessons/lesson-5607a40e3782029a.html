@@ -16,7 +16,7 @@
   --focus: #124b7b;
   --code: #f0f1ed;
   --measure: 44rem;
-  --sidebar-width: 15rem;
+  --sidebar-width: 12rem;
 }
 
 * {
@@ -55,12 +55,13 @@ body {
 }
 
 .reader-layout {
-  width: min(100%, 74rem);
-  margin-inline: auto;
+  width: 100%;
 }
 
 .reader-main {
+  width: min(100%, calc(var(--measure) + 3rem));
   min-width: 0;
+  margin-inline: auto;
 }
 
 .site-header,
@@ -103,7 +104,7 @@ h1 {
   margin-top: 0.5rem;
   margin-bottom: 2.5rem;
   color: var(--muted);
-  font-size: 0.94rem;
+  font-size: 0.85rem;
   line-height: 1.75;
 }
 
@@ -145,20 +146,6 @@ h1 {
   background: #e7eef0;
   box-shadow: inset 2px 0 0 var(--link);
   font-weight: 600;
-}
-
-.toc a[aria-current="page"] {
-  color: var(--focus);
-  background: #edf1ef;
-  font-weight: 650;
-}
-
-.toc .chapter-link {
-  font-weight: 600;
-}
-
-.toc .topic-link {
-  font-size: 0.94em;
 }
 
 .toc-disclosure {
@@ -509,12 +496,14 @@ hr {
   border-top: 1px solid var(--rule);
 }
 
-@media (min-width: 64rem) {
+/* Keep the reading column centered in the viewport. The index uses only the
+   left margin once it can fit beside the full 47rem reading column. */
+@media (min-width: 78rem) {
   .reader-sidebar {
     position: fixed;
     top: 2rem;
     bottom: 2rem;
-    inset-inline-start: max(0.75rem, calc((100vw - 74rem) / 2 + 0.75rem));
+    inset-inline-start: max(1rem, calc(50% - 23.5rem - var(--sidebar-width) - 1.5rem));
     width: var(--sidebar-width);
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -524,15 +513,7 @@ hr {
   .reader-sidebar .toc {
     width: 100%;
     margin: 0;
-    padding-inline: 0.5rem 0.75rem;
-  }
-
-  .reader-main {
-    margin-inline-start: calc(var(--sidebar-width) + 1.5rem);
-  }
-
-  .reader-layout.without-index .reader-main {
-    margin-inline-start: 0;
+    padding-inline: 0;
   }
 }
 
@@ -748,7 +729,7 @@ hr {
 
   const disclosure = toc.querySelector(".toc-disclosure");
   const desktopMedia = typeof window.matchMedia === "function"
-    ? window.matchMedia("(min-width: 64rem)")
+    ? window.matchMedia("(min-width: 78rem)")
     : null;
 
   const syncDisclosure = () => {
@@ -765,7 +746,7 @@ hr {
     }
   }
 
-  const entries = Array.from(toc.querySelectorAll('a[href^="#"]'))
+  const entries = Array.from(toc.querySelectorAll('a.topic-link[href^="#"]'))
     .map((link) => {
       let id;
       try {
@@ -774,7 +755,7 @@ hr {
         return null;
       }
       const heading = document.getElementById(id);
-      return heading && content.contains(heading) && heading.matches("h1, h2, h3")
+      return heading && content.contains(heading) && heading.matches("h3")
         ? { link, heading }
         : null;
     })
@@ -783,13 +764,14 @@ hr {
   toc.addEventListener("click", (event) => {
     if (!disclosure || !desktopMedia || desktopMedia.matches) return;
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    const link = event.target.closest("a[href]");
+    const link = event.target.closest('a.topic-link[href^="#"]');
     const target = link && (link.getAttribute("target") || "_self").toLowerCase();
-    if (link && toc.contains(link) && ["_self", "_top", "_parent"].includes(target) &&
+    if (link && entries.some((entry) => entry.link === link) &&
+        ["_self", "_top", "_parent"].includes(target) &&
         link.getAttribute("download") === null) {
       disclosure.open = false;
     }
-    // The browser follows ordinary anchors and chapter links with native history.
+    // The browser follows the local fragment with native scrolling and history.
   });
 
   if (!entries.length) return;
@@ -814,9 +796,7 @@ hr {
     entries.forEach(({ link }) => {
       if (link.getAttribute("aria-current") === "location") link.removeAttribute("aria-current");
     });
-    if (current.link.getAttribute("aria-current") !== "page") {
-      current.link.setAttribute("aria-current", "location");
-    }
+    current.link.setAttribute("aria-current", "location");
     active = current;
 
     // Keep the current item visible by moving only the index's own scroll area.

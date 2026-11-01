@@ -16,7 +16,7 @@
   --focus: #124b7b;
   --code: #f0f1ed;
   --measure: 44rem;
-  --sidebar-width: 15rem;
+  --sidebar-width: 12rem;
 }
 
 * {
@@ -55,12 +55,13 @@ body {
 }
 
 .reader-layout {
-  width: min(100%, 74rem);
-  margin-inline: auto;
+  width: 100%;
 }
 
 .reader-main {
+  width: min(100%, calc(var(--measure) + 3rem));
   min-width: 0;
+  margin-inline: auto;
 }
 
 .site-header,
@@ -103,7 +104,7 @@ h1 {
   margin-top: 0.5rem;
   margin-bottom: 2.5rem;
   color: var(--muted);
-  font-size: 0.94rem;
+  font-size: 0.85rem;
   line-height: 1.75;
 }
 
@@ -145,20 +146,6 @@ h1 {
   background: #e7eef0;
   box-shadow: inset 2px 0 0 var(--link);
   font-weight: 600;
-}
-
-.toc a[aria-current="page"] {
-  color: var(--focus);
-  background: #edf1ef;
-  font-weight: 650;
-}
-
-.toc .chapter-link {
-  font-weight: 600;
-}
-
-.toc .topic-link {
-  font-size: 0.94em;
 }
 
 .toc-disclosure {
@@ -509,12 +496,14 @@ hr {
   border-top: 1px solid var(--rule);
 }
 
-@media (min-width: 64rem) {
+/* Keep the reading column centered in the viewport. The index uses only the
+   left margin once it can fit beside the full 47rem reading column. */
+@media (min-width: 78rem) {
   .reader-sidebar {
     position: fixed;
     top: 2rem;
     bottom: 2rem;
-    inset-inline-start: max(0.75rem, calc((100vw - 74rem) / 2 + 0.75rem));
+    inset-inline-start: max(1rem, calc(50% - 23.5rem - var(--sidebar-width) - 1.5rem));
     width: var(--sidebar-width);
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -524,15 +513,7 @@ hr {
   .reader-sidebar .toc {
     width: 100%;
     margin: 0;
-    padding-inline: 0.5rem 0.75rem;
-  }
-
-  .reader-main {
-    margin-inline-start: calc(var(--sidebar-width) + 1.5rem);
-  }
-
-  .reader-layout.without-index .reader-main {
-    margin-inline-start: 0;
+    padding-inline: 0;
   }
 }
 
@@ -692,9 +673,16 @@ hr {
 </style>
 </head>
 <body class="chapter-page">
-<a class="skip-link" href="#content">跳到正文</a><div class="reader-layout"><aside class="reader-sidebar" aria-label="章节索引"><nav class="toc" aria-label="章节目录"><details class="toc-disclosure" open><summary>章节目录</summary><ul><li><a class="chapter-link" href="#%E7%AC%AC%E4%B8%80%E7%AB%A0%E5%85%88%E6%83%B3%E8%B1%A1%E4%BD%A0%E5%9C%A8%E6%96%B9%E6%A0%BC%E7%BA%B8%E4%B8%8A%E8%B5%B0%E8%B7%AF" aria-current="page">第一章：先想象你在方格纸上走路</a></li><li><a class="chapter-link" href="chapter-02.html#%E7%AC%AC%E4%BA%8C%E7%AB%A0%E8%B7%9F%E7%9D%80%E6%8B%BC%E4%B8%80%E6%AC%A1%E5%88%B0%E8%BE%BE-32">第二章：跟着拼一次，到达 (3,2)</a><ul><li><a class="topic-link" href="chapter-02.html#%E7%94%A8%E4%BB%A3%E7%A0%81%E6%A0%B8%E5%AF%B9%E5%88%9A%E6%89%8D%E7%9A%84%E7%BB%93%E6%9E%9C">用代码核对刚才的结果</a></li></ul></li><li><a class="chapter-link" href="chapter-03.html#%E7%AC%AC%E4%B8%89%E7%AB%A0%E8%87%AA%E5%B7%B1%E6%8B%BC%E4%B8%80%E6%AC%A1%E8%87%AA%E7%BC%96%E9%A2%98">第三章：自己拼一次（自编题）</a></li></ul></details></nav></aside><div class="reader-main"><header class="site-header"><p class="subtitle"><a href="../index.html">用两支向量，拼出一次移动</a></p></header><main id="content" class="course-content"><h1 id="第一章先想象你在方格纸上走路">第一章：先想象你在方格纸上走路</h1>
+<a class="skip-link" href="#content">跳到正文</a><div class="reader-layout"><aside class="reader-sidebar" aria-label="本章小节索引"><nav class="toc" aria-label="本章小节"><details class="toc-disclosure" open><summary>本章小节</summary><ul><li><a class="topic-link" href="#%E7%94%A8%E5%9D%90%E6%A0%87%E8%AE%B0%E4%B8%8B%E4%B8%80%E6%AC%A1%E7%A7%BB%E5%8A%A8">用坐标记下一次移动</a></li><li><a class="topic-link" href="#%E7%BB%99%E4%B8%A4%E6%94%AF%E5%90%91%E9%87%8F%E9%80%89%E5%80%8D%E6%95%B0%E5%86%8D%E7%BB%84%E5%90%88">给两支向量选倍数，再组合</a></li></ul></details></nav></aside><div class="reader-main"><header class="site-header"><p class="subtitle"><a href="../index.html">用两支向量，拼出一次移动</a></p></header><main id="content" class="course-content"><h1 id="第一章先想象你在方格纸上走路">第一章：先想象你在方格纸上走路</h1>
+<blockquote>
+<p>功能演示，题目自编，无真实课件页码。未提供原始资料，本文不包含 PDF 原题；讲解、示范与练习均为自编。</p>
+</blockquote>
+<p>从目录选一章，会另开一个标签页，目录留在原处。章内可以点小节跳到想看的地方，读到页尾还可以接着看上一章或下一章。小课堂也会另开标签页，读完切回正文，就能接着读。</p>
+
+<h3 id="用坐标记下一次移动">用坐标记下一次移动</h3>
 <p>从原点出发，向右走一步，可以记成向量 <math aria-label="u=(1,0)" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>u</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mn>1</mn><mo>&#x0002C;</mo><mn>0</mn><mo stretchy="false">&#x00029;</mo></mrow></math>。括号里的第一个数表示向右移动多少，第二个数表示向上移动多少；负数就表示向相反方向移动。另一个向量 <math aria-label="v=(1,1)" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>v</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mn>1</mn><mo>&#x0002C;</mo><mn>1</mn><mo stretchy="false">&#x00029;</mo></mrow></math> 表示向右、向上各走一步。</p>
 <p>把两次移动接在一起，就是向量相加。每个方向分别合计，所以 <math aria-label="u+v=(1+1,0+1)=(2,1)" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>u</mi><mo>&#x0002B;</mo><mi>v</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mn>1</mn><mo>&#x0002B;</mo><mn>1</mn><mo>&#x0002C;</mo><mn>0</mn><mo>&#x0002B;</mo><mn>1</mn><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mn>2</mn><mo>&#x0002C;</mo><mn>1</mn><mo stretchy="false">&#x00029;</mo></mrow></math>。而 <math aria-label="2u=(2,0)" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>2</mn><mi>u</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mn>2</mn><mo>&#x0002C;</mo><mn>0</mn><mo stretchy="false">&#x00029;</mo></mrow></math> 表示把 <math aria-label="u" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>u</mi></mrow></math> 的移动放大到两倍。这里的“倍数”不一定是整数：<math aria-label="0.5u" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>0.5</mn><mi>u</mi></mrow></math> 是原来的一半，<math aria-label="-u" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo>&#x02212;</mo><mi>u</mi></mrow></math> 则把方向反过来。</p>
+<h3 id="给两支向量选倍数再组合">给两支向量选倍数，再组合</h3>
 <p>现在允许给 <math aria-label="u" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>u</mi></mrow></math>、<math aria-label="v" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>v</mi></mrow></math> 各选一个实数倍数，再相加。这就是它们的<strong>线性组合</strong>：</p>
 <div class="math-block" tabindex="0" aria-label="公式"><math aria-label="a u+b v=a(1,0)+b(1,1)=(a+b,b)." xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>a</mi><mi>u</mi><mo>&#x0002B;</mo><mi>b</mi><mi>v</mi><mo>&#x0003D;</mo><mi>a</mi><mo stretchy="false">&#x00028;</mo><mn>1</mn><mo>&#x0002C;</mo><mn>0</mn><mo stretchy="false">&#x00029;</mo><mo>&#x0002B;</mo><mi>b</mi><mo stretchy="false">&#x00028;</mo><mn>1</mn><mo>&#x0002C;</mo><mn>1</mn><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>a</mi><mo>&#x0002B;</mo><mi>b</mi><mo>&#x0002C;</mo><mi>b</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0002E;</mo></mrow></math></div>
 <p><math aria-label="a" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>a</mi></mrow></math> 和 <math aria-label="b" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>b</mi></mrow></math> 叫作系数，也就是你给两支向量各选的倍数。上式的最后一步只是分别合计两个坐标，没有额外的运算规则。</p>
@@ -747,7 +735,7 @@ hr {
 
   const disclosure = toc.querySelector(".toc-disclosure");
   const desktopMedia = typeof window.matchMedia === "function"
-    ? window.matchMedia("(min-width: 64rem)")
+    ? window.matchMedia("(min-width: 78rem)")
     : null;
 
   const syncDisclosure = () => {
@@ -764,7 +752,7 @@ hr {
     }
   }
 
-  const entries = Array.from(toc.querySelectorAll('a[href^="#"]'))
+  const entries = Array.from(toc.querySelectorAll('a.topic-link[href^="#"]'))
     .map((link) => {
       let id;
       try {
@@ -773,7 +761,7 @@ hr {
         return null;
       }
       const heading = document.getElementById(id);
-      return heading && content.contains(heading) && heading.matches("h1, h2, h3")
+      return heading && content.contains(heading) && heading.matches("h3")
         ? { link, heading }
         : null;
     })
@@ -782,13 +770,14 @@ hr {
   toc.addEventListener("click", (event) => {
     if (!disclosure || !desktopMedia || desktopMedia.matches) return;
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    const link = event.target.closest("a[href]");
+    const link = event.target.closest('a.topic-link[href^="#"]');
     const target = link && (link.getAttribute("target") || "_self").toLowerCase();
-    if (link && toc.contains(link) && ["_self", "_top", "_parent"].includes(target) &&
+    if (link && entries.some((entry) => entry.link === link) &&
+        ["_self", "_top", "_parent"].includes(target) &&
         link.getAttribute("download") === null) {
       disclosure.open = false;
     }
-    // The browser follows ordinary anchors and chapter links with native history.
+    // The browser follows the local fragment with native scrolling and history.
   });
 
   if (!entries.length) return;
@@ -813,9 +802,7 @@ hr {
     entries.forEach(({ link }) => {
       if (link.getAttribute("aria-current") === "location") link.removeAttribute("aria-current");
     });
-    if (current.link.getAttribute("aria-current") !== "page") {
-      current.link.setAttribute("aria-current", "location");
-    }
+    current.link.setAttribute("aria-current", "location");
     active = current;
 
     // Keep the current item visible by moving only the index's own scroll area.
