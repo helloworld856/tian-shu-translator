@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小课堂：秩在数什么</title>
+<style>
+/* Local reading styles. No remote fonts, images, or other dependencies. */
+:root {
+  color-scheme: light;
+  --paper: #faf9f5;
+  --ink: #29343c;
+  --muted: #606d73;
+  --rule: #d9dedb;
+  --link: #1761a0;
+  --focus: #124b7b;
+  --code: #f0f1ed;
+  --measure: 44rem;
+  --sidebar-width: 15rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--paper);
+  scroll-behavior: smooth;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 1.125rem;
+  line-height: 1.9;
+  overflow-wrap: break-word;
+}
+
+.skip-link {
+  position: absolute;
+  z-index: 2;
+  top: 0.5rem;
+  left: 1rem;
+  padding: 0.25rem 0.6rem;
+  background: var(--paper);
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.reader-layout {
+  width: min(100%, 74rem);
+  margin-inline: auto;
+}
+
+.reader-main {
+  min-width: 0;
+}
+
+.site-header,
+.toc,
+.course-content,
+.chapter-pagination {
+  width: min(100%, calc(var(--measure) + 3rem));
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+.site-header {
+  padding-top: clamp(2.5rem, 7vw, 5rem);
+  padding-bottom: 1.25rem;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: #202e35;
+  font-weight: 650;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+h1 {
+  margin: 0 0 0.7rem;
+  font-size: clamp(1.7rem, 4.6vw, 2.35rem);
+  letter-spacing: -0.025em;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.toc {
+  margin-top: 0.5rem;
+  margin-bottom: 2.5rem;
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.75;
+}
+
+.toc:empty {
+  display: none;
+}
+
+.toc > ul,
+.toc-disclosure > ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  border-left: 2px solid var(--rule);
+  list-style: none;
+}
+
+.toc ul ul {
+  margin-block: 0.3rem;
+  padding-left: 1.25rem;
+  list-style: none;
+}
+
+.toc li {
+  margin-block: 0.35rem;
+}
+
+.toc a {
+  display: block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  text-decoration: none;
+}
+
+.toc a:hover {
+  text-decoration: underline;
+}
+
+.toc a[aria-current="location"] {
+  color: var(--focus);
+  background: #e7eef0;
+  box-shadow: inset 2px 0 0 var(--link);
+  font-weight: 600;
+}
+
+.toc a[aria-current="page"] {
+  color: var(--focus);
+  background: #edf1ef;
+  font-weight: 650;
+}
+
+.toc .chapter-link {
+  font-weight: 600;
+}
+
+.toc .topic-link {
+  font-size: 0.94em;
+}
+
+.toc-disclosure {
+  margin-block: 0;
+}
+
+.reader-sidebar .toc {
+  margin-top: 1.25rem;
+  margin-bottom: 0;
+}
+
+.course-content {
+  padding-bottom: 5rem;
+}
+
+.course-content > :first-child,
+.course-content article > :first-child {
+  margin-top: 0;
+}
+
+.chapter-list {
+  margin-block: 1.5rem 2.5rem;
+  padding-inline-start: 1.6rem;
+}
+
+.chapter-list > li {
+  margin-top: 0;
+  padding: 0.7rem 0 0.7rem 0.35rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.chapter-list > li::marker {
+  color: var(--muted);
+  font-size: 0.9em;
+}
+
+.chapter-list > li > a {
+  display: block;
+  padding-block: 0.2rem;
+  font-weight: 550;
+}
+
+.chapter-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  margin-block: -2rem 4rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.chapter-pagination a {
+  max-width: 100%;
+  padding-block: 0.25rem;
+}
+
+.chapter-pagination a[rel="prev"],
+.chapter-pagination a[rel="next"] {
+  flex: 1 1 10rem;
+}
+
+.chapter-pagination .index-link {
+  flex: 0 0 auto;
+}
+
+.chapter-pagination a[rel="next"] {
+  margin-inline-start: auto;
+  text-align: right;
+}
+
+h2 {
+  margin: 2.8rem 0 1rem;
+  font-size: 1.4rem;
+}
+
+h3 {
+  margin: 2rem 0 0.8rem;
+  font-size: 1.15rem;
+}
+
+h4 {
+  margin: 1.6rem 0 0.7rem;
+  font-size: 1rem;
+}
+
+p,
+ul,
+ol,
+blockquote,
+figure {
+  margin-block: 1.1rem;
+}
+
+ul,
+ol {
+  padding-left: 1.6em;
+}
+
+li + li {
+  margin-top: 0.4rem;
+}
+
+li > p {
+  margin-block: 0.5rem;
+}
+
+a {
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-thickness: 0.07em;
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  color: #0b487b;
+  text-decoration-thickness: 0.12em;
+}
+
+a.term {
+  color: var(--link);
+  text-decoration-style: solid;
+}
+
+a.term::after {
+  content: " ↗";
+  font-size: 0.75em;
+}
+
+.lesson-page section.prerequisite {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.lesson-page section.prerequisite:target {
+  outline: none;
+}
+
+.chapter-page .course-content > h1:target {
+  outline: none;
+}
+
+.lesson-note {
+  margin-top: 2rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+a.return-link {
+  display: inline-block;
+  margin-block: 0.4rem;
+  font-size: 0.95rem;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+[id] {
+  scroll-margin-top: 1.5rem;
+}
+
+:target {
+  outline: 2px solid #b3ccdc;
+  outline-offset: 5px;
+}
+
+section.prerequisite {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+}
+
+section.prerequisite > h2:first-child {
+  margin-top: 0.8rem;
+}
+
+section.exercise {
+  margin-block: 2.5rem;
+  padding-left: 1.15rem;
+  border-left: 2px solid #bec8c3;
+}
+
+section.exercise > :first-child {
+  margin-top: 0;
+}
+
+details {
+  margin-block: 1rem;
+  padding-block: 0.65rem;
+  border-top: 1px solid var(--rule);
+}
+
+summary {
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.2rem 0.15rem;
+  color: var(--link);
+  cursor: pointer;
+  font-weight: 550;
+}
+
+summary::marker {
+  color: var(--muted);
+}
+
+details[open] > summary {
+  margin-bottom: 0.7rem;
+}
+
+details > :last-child {
+  margin-bottom: 0.3rem;
+}
+
+blockquote {
+  margin-inline: 0;
+  padding-left: 1rem;
+  border-left: 2px solid var(--rule);
+  color: var(--muted);
+  font-size: 0.96em;
+}
+
+blockquote > :first-child {
+  margin-top: 0;
+}
+
+blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+code,
+pre {
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono",
+    monospace;
+  font-size: 0.88em;
+  font-variant-ligatures: none;
+}
+
+:not(pre) > code {
+  padding: 0.12em 0.3em;
+  border-radius: 3px;
+  background: var(--code);
+}
+
+pre {
+  max-width: 100%;
+  margin-block: 1.4rem;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  background: var(--code);
+  border-radius: 3px;
+  line-height: 1.65;
+  text-align: left;
+  white-space: pre;
+  overflow-wrap: normal;
+  tab-size: 4;
+}
+
+pre code {
+  padding: 0;
+  background: transparent;
+  font-size: 1em;
+  white-space: inherit;
+}
+
+math {
+  font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", math;
+  font-size: 1.05em;
+}
+
+math[display="block"],
+.math-block,
+.math-display {
+  display: block;
+  max-width: 100%;
+  margin-block: 1.45rem;
+  padding-block: 0.4rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.math-block > math,
+.math-display > math {
+  width: max-content;
+  min-width: 100%;
+  margin: 0;
+  overflow: visible;
+}
+
+img,
+svg,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+figure {
+  margin-inline: 0;
+}
+
+figure > img,
+figure > svg {
+  display: block;
+  margin-inline: auto;
+}
+
+figcaption,
+caption {
+  margin-top: 0.7rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+table {
+  display: block;
+  max-width: 100%;
+  margin-block: 1.5rem;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+
+th,
+td {
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: #202e35;
+  font-weight: 600;
+}
+
+hr {
+  margin-block: 2.5rem;
+  border: 0;
+  border-top: 1px solid var(--rule);
+}
+
+@media (min-width: 64rem) {
+  .reader-sidebar {
+    position: fixed;
+    top: 2rem;
+    bottom: 2rem;
+    inset-inline-start: max(0.75rem, calc((100vw - 74rem) / 2 + 0.75rem));
+    width: var(--sidebar-width);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+
+  .reader-sidebar .toc {
+    width: 100%;
+    margin: 0;
+    padding-inline: 0.5rem 0.75rem;
+  }
+
+  .reader-main {
+    margin-inline-start: calc(var(--sidebar-width) + 1.5rem);
+  }
+
+  .reader-layout.without-index .reader-main {
+    margin-inline-start: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+@media (max-width: 36rem) {
+  body {
+    font-size: 1.0625rem;
+    line-height: 1.85;
+  }
+
+  .site-header,
+  .toc,
+  .course-content,
+  .chapter-pagination {
+    padding-inline: 1.15rem;
+  }
+
+  h2 {
+    margin-top: 2.3rem;
+    font-size: 1.3rem;
+  }
+
+  section.exercise {
+    padding-left: 0.8rem;
+  }
+
+  pre {
+    padding-inline: 0.8rem;
+  }
+}
+
+@media print {
+  @page {
+    margin: 18mm 16mm;
+  }
+
+  html,
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  .reader-sidebar,
+  .skip-link,
+  .chapter-pagination {
+    display: none;
+  }
+
+  .reader-layout,
+  .reader-main {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  body {
+    font-size: 11pt;
+    line-height: 1.7;
+  }
+
+  .site-header,
+  .toc,
+  .course-content {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+  }
+
+  .site-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .course-content {
+    padding-bottom: 0;
+  }
+
+  a,
+  a.term,
+  summary {
+    color: #000;
+  }
+
+  a.return-link {
+    display: none;
+  }
+
+  :target {
+    outline: none;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  summary,
+  figcaption {
+    break-after: avoid;
+  }
+
+  p,
+  li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  img,
+  svg,
+  tr {
+    break-inside: avoid;
+  }
+
+  /* reader.js opens details before printing and restores their state afterward.
+     These rules also expose the contents in browsers with CSS-only support. */
+  details::details-content {
+    display: block !important;
+    content-visibility: visible !important;
+    height: auto !important;
+  }
+
+  details:not([open]) > :not(summary) {
+    display: block !important;
+  }
+
+  details > summary {
+    margin-bottom: 0.7rem;
+  }
+
+  pre {
+    overflow: visible;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  table {
+    display: table;
+    width: 100%;
+    overflow: visible;
+  }
+
+  math[display="block"],
+  .math-block,
+  .math-display {
+    overflow: visible;
+    white-space: normal;
+  }
+}
+
+</style>
+</head>
+<body class="lesson-page">
+<a class="skip-link" href="#content">跳到正文</a><header class="site-header"><p class="subtitle">先修小课堂</p></header><main id="content" class="course-content"><section class="prerequisite" id="term-rank">
+<h1 id="小课堂秩在数什么">小课堂：秩在数什么</h1>
+<p>先把“矩阵”看成一个排整齐的数字表。把 <math aria-label="u=(1,0)" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>u</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mn>1</mn><mo>&#x0002C;</mo><mn>0</mn><mo stretchy="false">&#x00029;</mo></mrow></math> 和 <math aria-label="v=(1,1)" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>v</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mn>1</mn><mo>&#x0002C;</mo><mn>1</mn><mo stretchy="false">&#x00029;</mo></mrow></math> 作为两列并排写，就得到：</p>
+<div class="math-block" tabindex="0" aria-label="公式"><math aria-label="A=\begin{pmatrix}1&amp;1\\0&amp;1\end{pmatrix}." xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>A</mi><mo>&#x0003D;</mo><mo>&#x00028;</mo><mtable><mtr><mtd><mn>1</mn></mtd><mtd><mn>1</mn></mtd></mtr><mtr><mtd><mn>0</mn></mtd><mtd><mn>1</mn></mtd></mtr></mtable><mo>&#x00029;</mo><mo>&#x0002E;</mo></mrow></math></div>
+<p>矩阵的<strong>秩</strong>可以理解为：这些列向量提供了几个彼此独立的方向。严格地说，它是列向量中最多能选出的线性无关向量的个数。“线性无关”表示，只有把所有系数都取成 <math aria-label="0" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>0</mn></mrow></math>，它们的线性组合才会得到零向量；只要能找到一组不全为 <math aria-label="0" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>0</mn></mrow></math> 的系数却合成零向量，它们就是线性相关的。</p>
+<p>在这里，<math aria-label="u" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>u</mi></mrow></math> 只向右，<math aria-label="v" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>v</mi></mrow></math> 却还有向上的分量，所以 <math aria-label="v" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>v</mi></mrow></math> 无法通过把 <math aria-label="u" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>u</mi></mrow></math> 乘一个数得到。再具体检查一下：如果 <math aria-label="a u+b v=(0,0)" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>a</mi><mi>u</mi><mo>&#x0002B;</mo><mi>b</mi><mi>v</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mn>0</mn><mo>&#x0002C;</mo><mn>0</mn><mo stretchy="false">&#x00029;</mo></mrow></math>，第二个坐标迫使 <math aria-label="b=0" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>b</mi><mo>&#x0003D;</mo><mn>0</mn></mrow></math>，第一个坐标再迫使 <math aria-label="a=0" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>a</mi><mo>&#x0003D;</mo><mn>0</mn></mrow></math>。两列确实线性无关，因此 <math aria-label="A" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>A</mi></mrow></math> 的秩为 <math aria-label="2" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>2</mn></mrow></math>。</p>
+<p>换一组小例子：若两列是 <math aria-label="(1,0)" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo stretchy="false">&#x00028;</mo><mn>1</mn><mo>&#x0002C;</mo><mn>0</mn><mo stretchy="false">&#x00029;</mo></mrow></math> 和 <math aria-label="(2,0)" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo stretchy="false">&#x00028;</mo><mn>2</mn><mo>&#x0002C;</mo><mn>0</mn><mo stretchy="false">&#x00029;</mo></mrow></math>，第二列只是第一列的两倍。无论怎样组合，都只能在水平线上移动。这时最多只能选出一支线性无关的向量，所以秩为 <math aria-label="1" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>1</mn></mrow></math>。如果所有列都是零向量，秩就是 <math aria-label="0" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>0</mn></mrow></math>。</p>
+<p>对这节内容，只要记住：秩数的是独立方向的个数，并不是非零数字的个数。主文里的两支向量提供两个独立方向，所以能拼出平面上任意向量。</p>
+</section><p class="lesson-note">读完后，切回原来的教程标签页即可继续阅读。</p></main>
+<script>
+/* Small, offline enhancements. Ordinary links and details work without JS. */
+(() => {
+  "use strict";
+
+  let printState = null;
+
+  const preparePrint = () => {
+    if (printState !== null) return;
+    printState = new Map();
+    document.querySelectorAll("details").forEach((detail) => {
+      printState.set(detail, detail.open);
+      detail.open = true;
+    });
+  };
+
+  const restoreAfterPrint = () => {
+    if (printState === null) return;
+    printState.forEach((wasOpen, detail) => {
+      detail.open = wasOpen;
+    });
+    printState = null;
+  };
+
+  window.addEventListener("beforeprint", preparePrint);
+  window.addEventListener("afterprint", restoreAfterPrint);
+
+  // A print media change covers browsers that omit one of the print events.
+  if (typeof window.matchMedia === "function") {
+    const printMedia = window.matchMedia("print");
+    const onPrintChange = (event) => {
+      if (event.matches) preparePrint();
+      else restoreAfterPrint();
+    };
+    if (typeof printMedia.addEventListener === "function") {
+      printMedia.addEventListener("change", onPrintChange);
+    } else if (typeof printMedia.addListener === "function") {
+      printMedia.addListener(onPrintChange);
+    }
+  }
+
+  const toc = document.querySelector(".reader-sidebar .toc");
+  const content = document.querySelector(".reader-main .course-content");
+  if (!toc || !content) return;
+
+  const disclosure = toc.querySelector(".toc-disclosure");
+  const desktopMedia = typeof window.matchMedia === "function"
+    ? window.matchMedia("(min-width: 64rem)")
+    : null;
+
+  const syncDisclosure = () => {
+    if (!disclosure || !desktopMedia) return;
+    // Printing can change viewport media; preserve the original disclosure state.
+    if (printState === null) disclosure.open = desktopMedia.matches;
+  };
+  syncDisclosure();
+  if (desktopMedia) {
+    if (typeof desktopMedia.addEventListener === "function") {
+      desktopMedia.addEventListener("change", syncDisclosure);
+    } else if (typeof desktopMedia.addListener === "function") {
+      desktopMedia.addListener(syncDisclosure);
+    }
+  }
+
+  const entries = Array.from(toc.querySelectorAll('a[href^="#"]'))
+    .map((link) => {
+      let id;
+      try {
+        id = decodeURIComponent(link.getAttribute("href").slice(1));
+      } catch {
+        return null;
+      }
+      const heading = document.getElementById(id);
+      return heading && content.contains(heading) && heading.matches("h1, h2, h3")
+        ? { link, heading }
+        : null;
+    })
+    .filter(Boolean);
+
+  toc.addEventListener("click", (event) => {
+    if (!disclosure || !desktopMedia || desktopMedia.matches) return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const link = event.target.closest("a[href]");
+    const target = link && (link.getAttribute("target") || "_self").toLowerCase();
+    if (link && toc.contains(link) && ["_self", "_top", "_parent"].includes(target) &&
+        link.getAttribute("download") === null) {
+      disclosure.open = false;
+    }
+    // The browser follows ordinary anchors and chapter links with native history.
+  });
+
+  if (!entries.length) return;
+  const sidebar = toc.closest(".reader-sidebar");
+  let active = null;
+  let framePending = false;
+
+  const updateCurrentSection = () => {
+    framePending = false;
+    const activationLine = Math.min(window.innerHeight * 0.25, 160);
+    let current = entries[0];
+    for (const entry of entries) {
+      if (entry.heading.getBoundingClientRect().top > activationLine) break;
+      current = entry;
+    }
+    // A short final section may never reach the activation line.
+    if (window.scrollY > 0 &&
+        window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
+      current = entries[entries.length - 1];
+    }
+    if (active === current) return;
+    entries.forEach(({ link }) => {
+      if (link.getAttribute("aria-current") === "location") link.removeAttribute("aria-current");
+    });
+    if (current.link.getAttribute("aria-current") !== "page") {
+      current.link.setAttribute("aria-current", "location");
+    }
+    active = current;
+
+    // Keep the current item visible by moving only the index's own scroll area.
+    if (sidebar && desktopMedia && desktopMedia.matches) {
+      const item = current.link.getBoundingClientRect();
+      const bounds = sidebar.getBoundingClientRect();
+      if (item.top < bounds.top + 8) sidebar.scrollTop += item.top - bounds.top - 8;
+      else if (item.bottom > bounds.bottom - 8) sidebar.scrollTop += item.bottom - bounds.bottom + 8;
+    }
+  };
+
+  const scheduleUpdate = () => {
+    if (framePending) return;
+    framePending = true;
+    window.requestAnimationFrame(updateCurrentSection);
+  };
+
+  window.addEventListener("scroll", scheduleUpdate, { passive: true });
+  window.addEventListener("resize", scheduleUpdate);
+  window.addEventListener("hashchange", scheduleUpdate);
+  window.addEventListener("afterprint", scheduleUpdate);
+  scheduleUpdate();
+})();
+
+</script>
+</body>
+</html>

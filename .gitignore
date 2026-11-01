@@ -1,0 +1,10 @@
+.venv/
+.build-tmp/
+__pycache__/
+*.py[cod]
+tests/html-test-*/
+tests/pdf-test-*/
+tests/moved-course-*/
+tests/forward-evaluation/
+examples/vector-course/_preview/
+output/
