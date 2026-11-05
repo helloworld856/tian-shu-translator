@@ -468,6 +468,77 @@ caption {
   text-align: left;
 }
 
+.chapter-map {
+  max-width: 100%;
+  margin-block: 1.25rem 2rem;
+}
+
+.chapter-map > figcaption {
+  margin: 0 0 0.4rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.chapter-map-canvas {
+  max-width: 100%;
+  padding-block: 0.25rem 0.65rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #bbc8cc transparent;
+}
+
+.chapter-map-canvas:focus-visible {
+  outline: 2px solid #9bb4c1;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* Keep labels readable at narrow widths; only the diagram scrolls. */
+.chapter-map-canvas > svg {
+  display: block;
+  width: var(--map-width, 100%);
+  max-width: none;
+  height: auto;
+  margin-inline: auto;
+  font-family: inherit;
+}
+
+.chapter-map-node > rect {
+  fill: #f2f5f3;
+  stroke: #c5d0d1;
+  stroke-width: 1;
+}
+
+.chapter-map-node > text {
+  fill: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.chapter-map-edge {
+  fill: none;
+  stroke: #94aab5;
+  stroke-width: 1.2;
+}
+
+.chapter-map-arrow {
+  fill: #94aab5;
+}
+
+.chapter-map-relation {
+  fill: #647d89;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.chapter-map-relation-bg {
+  fill: var(--paper);
+}
+
 table {
   display: block;
   max-width: 100%;
@@ -634,6 +705,19 @@ hr {
     break-inside: avoid;
   }
 
+  .chapter-map {
+    break-inside: avoid;
+  }
+
+  .chapter-map-canvas {
+    overflow: visible;
+  }
+
+  .chapter-map-canvas > svg {
+    width: min(var(--map-width, 100%), 100%);
+    max-width: 100%;
+  }
+
   /* reader.js opens details before printing and restores their state afterward.
      These rules also expose the contents in browsers with CSS-only support. */
   details::details-content {
@@ -674,6 +758,7 @@ hr {
 </head>
 <body class="chapter-page">
 <a class="skip-link" href="#content">跳到正文</a><div class="reader-layout"><aside class="reader-sidebar" aria-label="本章小节索引"><nav class="toc" aria-label="本章小节"><details class="toc-disclosure" open><summary>本章小节</summary><ul><li><a class="topic-link" href="#%E5%8A%A8%E6%89%8B%E6%8B%BC%E5%87%BA-21">动手拼出 (2,−1)</a></li></ul></details></nav></aside><div class="reader-main"><header class="site-header"><p class="subtitle"><a href="../index.html">用两支向量，拼出一次移动</a></p></header><main id="content" class="course-content"><h1 id="第三章自己拼一次自编题">第三章：自己拼一次（自编题）</h1>
+<figure class="chapter-map"><figcaption>这一章的知识关系</figcaption><div class="chapter-map-canvas" tabindex="0"><svg role="img" aria-labelledby="chapter-map-3-title chapter-map-3-desc" viewBox="0 0 388 328" width="388" height="328" style="--map-width: 388px"><title id="chapter-map-3-title">这一章的知识关系</title><desc id="chapter-map-3-desc">节点：动手组合、坐标条件、负系数方向、代回检查。关系：动手组合 涉及 坐标条件；动手组合 涉及 负系数方向；坐标条件 用于检查 代回检查；负系数方向 用于检查 代回检查。</desc><defs><marker id="chapter-map-3-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="chapter-map-arrow" d="M 0 0 L 10 5 L 0 10 z"></path></marker></defs><path class="chapter-map-edge" d="M 194 88 Q 194 112, 146.5 112 Q 99 112, 99 136" marker-end="url(#chapter-map-3-arrow)"></path><path class="chapter-map-edge" d="M 194 88 Q 194 112, 241.5 112 Q 289 112, 289 136" marker-end="url(#chapter-map-3-arrow)"></path><path class="chapter-map-edge" d="M 99 192 Q 99 216, 146.5 216 Q 194 216, 194 240" marker-end="url(#chapter-map-3-arrow)"></path><path class="chapter-map-edge" d="M 289 192 Q 289 216, 241.5 216 Q 194 216, 194 240" marker-end="url(#chapter-map-3-arrow)"></path><rect class="chapter-map-relation-bg" x="127.5" y="103" width="38" height="19" rx="3"></rect><text class="chapter-map-relation" x="146.5" y="116" text-anchor="middle">涉及</text><rect class="chapter-map-relation-bg" x="222.5" y="103" width="38" height="19" rx="3"></rect><text class="chapter-map-relation" x="241.5" y="116" text-anchor="middle">涉及</text><rect class="chapter-map-relation-bg" x="113.5" y="207" width="66" height="19" rx="3"></rect><text class="chapter-map-relation" x="146.5" y="220" text-anchor="middle">用于检查</text><rect class="chapter-map-relation-bg" x="208.5" y="207" width="66" height="19" rx="3"></rect><text class="chapter-map-relation" x="241.5" y="220" text-anchor="middle">用于检查</text><g class="chapter-map-node"><rect x="119" y="32" width="150" height="56" rx="8"></rect><text text-anchor="middle"><tspan x="194" y="66">动手组合</tspan></text></g><g class="chapter-map-node"><rect x="24" y="136" width="150" height="56" rx="8"></rect><text text-anchor="middle"><tspan x="99" y="170">坐标条件</tspan></text></g><g class="chapter-map-node"><rect x="214" y="136" width="150" height="56" rx="8"></rect><text text-anchor="middle"><tspan x="289" y="170">负系数方向</tspan></text></g><g class="chapter-map-node"><rect x="119" y="240" width="150" height="56" rx="8"></rect><text text-anchor="middle"><tspan x="194" y="274">代回检查</tspan></text></g></svg></div></figure>
 <section class="exercise" id="exercise-demo">
 <h3 id="动手拼出-21">动手拼出 <math aria-label="(2,-1)" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo stretchy="false">&#x00028;</mo><mn>2</mn><mo>&#x0002C;</mo><mo>&#x02212;</mo><mn>1</mn><mo stretchy="false">&#x00029;</mo></mrow></math></h3>
 <p>仍然用 <math aria-label="u=(1,0)" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>u</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mn>1</mn><mo>&#x0002C;</mo><mn>0</mn><mo stretchy="false">&#x00029;</mo></mrow></math> 和 <math aria-label="v=(1,1)" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>v</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mn>1</mn><mo>&#x0002C;</mo><mn>1</mn><mo stretchy="false">&#x00029;</mo></mrow></math>。请找出 <math aria-label="a,b" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>a</mi><mo>&#x0002C;</mo><mi>b</mi></mrow></math>，使 <math aria-label="a u+b v=(2,-1)" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>a</mi><mi>u</mi><mo>&#x0002B;</mo><mi>b</mi><mi>v</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mn>2</mn><mo>&#x0002C;</mo><mo>&#x02212;</mo><mn>1</mn><mo stretchy="false">&#x00029;</mo></mrow></math>。可以先在纸上写出两个坐标分别需要满足什么条件，再核对答案。</p>

@@ -468,6 +468,77 @@ caption {
   text-align: left;
 }
 
+.chapter-map {
+  max-width: 100%;
+  margin-block: 1.25rem 2rem;
+}
+
+.chapter-map > figcaption {
+  margin: 0 0 0.4rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.chapter-map-canvas {
+  max-width: 100%;
+  padding-block: 0.25rem 0.65rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #bbc8cc transparent;
+}
+
+.chapter-map-canvas:focus-visible {
+  outline: 2px solid #9bb4c1;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* Keep labels readable at narrow widths; only the diagram scrolls. */
+.chapter-map-canvas > svg {
+  display: block;
+  width: var(--map-width, 100%);
+  max-width: none;
+  height: auto;
+  margin-inline: auto;
+  font-family: inherit;
+}
+
+.chapter-map-node > rect {
+  fill: #f2f5f3;
+  stroke: #c5d0d1;
+  stroke-width: 1;
+}
+
+.chapter-map-node > text {
+  fill: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.chapter-map-edge {
+  fill: none;
+  stroke: #94aab5;
+  stroke-width: 1.2;
+}
+
+.chapter-map-arrow {
+  fill: #94aab5;
+}
+
+.chapter-map-relation {
+  fill: #647d89;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.chapter-map-relation-bg {
+  fill: var(--paper);
+}
+
 table {
   display: block;
   max-width: 100%;
@@ -632,6 +703,19 @@ hr {
   svg,
   tr {
     break-inside: avoid;
+  }
+
+  .chapter-map {
+    break-inside: avoid;
+  }
+
+  .chapter-map-canvas {
+    overflow: visible;
+  }
+
+  .chapter-map-canvas > svg {
+    width: min(var(--map-width, 100%), 100%);
+    max-width: 100%;
   }
 
   /* reader.js opens details before printing and restores their state afterward.

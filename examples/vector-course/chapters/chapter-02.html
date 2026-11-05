@@ -468,6 +468,77 @@ caption {
   text-align: left;
 }
 
+.chapter-map {
+  max-width: 100%;
+  margin-block: 1.25rem 2rem;
+}
+
+.chapter-map > figcaption {
+  margin: 0 0 0.4rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.chapter-map-canvas {
+  max-width: 100%;
+  padding-block: 0.25rem 0.65rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #bbc8cc transparent;
+}
+
+.chapter-map-canvas:focus-visible {
+  outline: 2px solid #9bb4c1;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* Keep labels readable at narrow widths; only the diagram scrolls. */
+.chapter-map-canvas > svg {
+  display: block;
+  width: var(--map-width, 100%);
+  max-width: none;
+  height: auto;
+  margin-inline: auto;
+  font-family: inherit;
+}
+
+.chapter-map-node > rect {
+  fill: #f2f5f3;
+  stroke: #c5d0d1;
+  stroke-width: 1;
+}
+
+.chapter-map-node > text {
+  fill: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.chapter-map-edge {
+  fill: none;
+  stroke: #94aab5;
+  stroke-width: 1.2;
+}
+
+.chapter-map-arrow {
+  fill: #94aab5;
+}
+
+.chapter-map-relation {
+  fill: #647d89;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.chapter-map-relation-bg {
+  fill: var(--paper);
+}
+
 table {
   display: block;
   max-width: 100%;
@@ -634,6 +705,19 @@ hr {
     break-inside: avoid;
   }
 
+  .chapter-map {
+    break-inside: avoid;
+  }
+
+  .chapter-map-canvas {
+    overflow: visible;
+  }
+
+  .chapter-map-canvas > svg {
+    width: min(var(--map-width, 100%), 100%);
+    max-width: 100%;
+  }
+
   /* reader.js opens details before printing and restores their state afterward.
      These rules also expose the contents in browsers with CSS-only support. */
   details::details-content {
@@ -674,6 +758,7 @@ hr {
 </head>
 <body class="chapter-page">
 <a class="skip-link" href="#content">跳到正文</a><div class="reader-layout"><aside class="reader-sidebar" aria-label="本章小节索引"><nav class="toc" aria-label="本章小节"><details class="toc-disclosure" open><summary>本章小节</summary><ul><li><a class="topic-link" href="#%E5%AF%B9%E7%85%A7%E7%9B%AE%E6%A0%87%E5%9D%90%E6%A0%87%E6%89%8B%E7%AE%97%E7%B3%BB%E6%95%B0">对照目标坐标，手算系数</a></li><li><a class="topic-link" href="#%E7%94%A8%E4%BB%A3%E7%A0%81%E6%A0%B8%E5%AF%B9%E5%88%9A%E6%89%8D%E7%9A%84%E7%BB%93%E6%9E%9C">用代码核对刚才的结果</a></li></ul></details></nav></aside><div class="reader-main"><header class="site-header"><p class="subtitle"><a href="../index.html">用两支向量，拼出一次移动</a></p></header><main id="content" class="course-content"><h1 id="第二章跟着拼一次到达-32">第二章：跟着拼一次，到达 <math aria-label="(3,2)" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo stretchy="false">&#x00028;</mo><mn>3</mn><mo>&#x0002C;</mo><mn>2</mn><mo stretchy="false">&#x00029;</mo></mrow></math></h1>
+<figure class="chapter-map"><figcaption>这一章的知识关系</figcaption><div class="chapter-map-canvas" tabindex="0"><svg role="img" aria-labelledby="chapter-map-2-title chapter-map-2-desc" viewBox="0 0 626 120" width="626" height="120" style="--map-width: 626px"><title id="chapter-map-2-title">这一章的知识关系</title><desc id="chapter-map-2-desc">节点：列坐标方程、求出系数、代回核对。关系：列坐标方程 递进 求出系数；求出系数 递进 代回核对。</desc><defs><marker id="chapter-map-2-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="chapter-map-arrow" d="M 0 0 L 10 5 L 0 10 z"></path></marker></defs><path class="chapter-map-edge" d="M 174 60 L 238 60" marker-end="url(#chapter-map-2-arrow)"></path><path class="chapter-map-edge" d="M 388 60 L 452 60" marker-end="url(#chapter-map-2-arrow)"></path><rect class="chapter-map-relation-bg" x="187" y="36" width="38" height="19" rx="3"></rect><text class="chapter-map-relation" x="206" y="49" text-anchor="middle">递进</text><rect class="chapter-map-relation-bg" x="401" y="36" width="38" height="19" rx="3"></rect><text class="chapter-map-relation" x="420" y="49" text-anchor="middle">递进</text><g class="chapter-map-node"><rect x="24" y="32" width="150" height="56" rx="8"></rect><text text-anchor="middle"><tspan x="99" y="66">列坐标方程</tspan></text></g><g class="chapter-map-node"><rect x="238" y="32" width="150" height="56" rx="8"></rect><text text-anchor="middle"><tspan x="313" y="66">求出系数</tspan></text></g><g class="chapter-map-node"><rect x="452" y="32" width="150" height="56" rx="8"></rect><text text-anchor="middle"><tspan x="527" y="66">代回核对</tspan></text></g></svg></div></figure>
 <h3 id="对照目标坐标手算系数">对照目标坐标，手算系数</h3>
 <p>这是一道自编示范。我们想找到系数 <math aria-label="a,b" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>a</mi><mo>&#x0002C;</mo><mi>b</mi></mrow></math>，让 <math aria-label="a u+b v=(3,2)" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>a</mi><mi>u</mi><mo>&#x0002B;</mo><mi>b</mi><mi>v</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mn>3</mn><mo>&#x0002C;</mo><mn>2</mn><mo stretchy="false">&#x00029;</mo></mrow></math>。用刚才的结果 <math aria-label="(a+b,b)" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo stretchy="false">&#x00028;</mo><mi>a</mi><mo>&#x0002B;</mo><mi>b</mi><mo>&#x0002C;</mo><mi>b</mi><mo stretchy="false">&#x00029;</mo></mrow></math> 与目标比较：</p>
 <div class="math-block" tabindex="0" aria-label="公式"><math aria-label="\begin{cases}

@@ -468,6 +468,77 @@ caption {
   text-align: left;
 }
 
+.chapter-map {
+  max-width: 100%;
+  margin-block: 1.25rem 2rem;
+}
+
+.chapter-map > figcaption {
+  margin: 0 0 0.4rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.chapter-map-canvas {
+  max-width: 100%;
+  padding-block: 0.25rem 0.65rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #bbc8cc transparent;
+}
+
+.chapter-map-canvas:focus-visible {
+  outline: 2px solid #9bb4c1;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* Keep labels readable at narrow widths; only the diagram scrolls. */
+.chapter-map-canvas > svg {
+  display: block;
+  width: var(--map-width, 100%);
+  max-width: none;
+  height: auto;
+  margin-inline: auto;
+  font-family: inherit;
+}
+
+.chapter-map-node > rect {
+  fill: #f2f5f3;
+  stroke: #c5d0d1;
+  stroke-width: 1;
+}
+
+.chapter-map-node > text {
+  fill: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.chapter-map-edge {
+  fill: none;
+  stroke: #94aab5;
+  stroke-width: 1.2;
+}
+
+.chapter-map-arrow {
+  fill: #94aab5;
+}
+
+.chapter-map-relation {
+  fill: #647d89;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.chapter-map-relation-bg {
+  fill: var(--paper);
+}
+
 table {
   display: block;
   max-width: 100%;
@@ -634,6 +705,19 @@ hr {
     break-inside: avoid;
   }
 
+  .chapter-map {
+    break-inside: avoid;
+  }
+
+  .chapter-map-canvas {
+    overflow: visible;
+  }
+
+  .chapter-map-canvas > svg {
+    width: min(var(--map-width, 100%), 100%);
+    max-width: 100%;
+  }
+
   /* reader.js opens details before printing and restores their state afterward.
      These rules also expose the contents in browsers with CSS-only support. */
   details::details-content {
@@ -674,6 +758,7 @@ hr {
 </head>
 <body class="chapter-page">
 <a class="skip-link" href="#content">跳到正文</a><div class="reader-layout"><aside class="reader-sidebar" aria-label="本章小节索引"><nav class="toc" aria-label="本章小节"><details class="toc-disclosure" open><summary>本章小节</summary><ul><li><a class="topic-link" href="#%E7%94%A8%E5%9D%90%E6%A0%87%E8%AE%B0%E4%B8%8B%E4%B8%80%E6%AC%A1%E7%A7%BB%E5%8A%A8">用坐标记下一次移动</a></li><li><a class="topic-link" href="#%E7%BB%99%E4%B8%A4%E6%94%AF%E5%90%91%E9%87%8F%E9%80%89%E5%80%8D%E6%95%B0%E5%86%8D%E7%BB%84%E5%90%88">给两支向量选倍数，再组合</a></li></ul></details></nav></aside><div class="reader-main"><header class="site-header"><p class="subtitle"><a href="../index.html">用两支向量，拼出一次移动</a></p></header><main id="content" class="course-content"><h1 id="第一章先想象你在方格纸上走路">第一章：先想象你在方格纸上走路</h1>
+<figure class="chapter-map"><figcaption>这一章的知识关系</figcaption><div class="chapter-map-canvas" tabindex="0"><svg role="img" aria-labelledby="chapter-map-1-title chapter-map-1-desc" viewBox="0 0 388 328" width="388" height="328" style="--map-width: 388px"><title id="chapter-map-1-title">这一章的知识关系</title><desc id="chapter-map-1-desc">节点：向量运算、向量相加、数乘、线性组合。关系：向量运算 包含 向量相加；向量运算 包含 数乘；向量相加 组合成 线性组合；数乘 组合成 线性组合。</desc><defs><marker id="chapter-map-1-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="chapter-map-arrow" d="M 0 0 L 10 5 L 0 10 z"></path></marker></defs><path class="chapter-map-edge" d="M 194 88 Q 194 112, 146.5 112 Q 99 112, 99 136" marker-end="url(#chapter-map-1-arrow)"></path><path class="chapter-map-edge" d="M 194 88 Q 194 112, 241.5 112 Q 289 112, 289 136" marker-end="url(#chapter-map-1-arrow)"></path><path class="chapter-map-edge" d="M 99 192 Q 99 216, 146.5 216 Q 194 216, 194 240" marker-end="url(#chapter-map-1-arrow)"></path><path class="chapter-map-edge" d="M 289 192 Q 289 216, 241.5 216 Q 194 216, 194 240" marker-end="url(#chapter-map-1-arrow)"></path><rect class="chapter-map-relation-bg" x="127.5" y="103" width="38" height="19" rx="3"></rect><text class="chapter-map-relation" x="146.5" y="116" text-anchor="middle">包含</text><rect class="chapter-map-relation-bg" x="222.5" y="103" width="38" height="19" rx="3"></rect><text class="chapter-map-relation" x="241.5" y="116" text-anchor="middle">包含</text><rect class="chapter-map-relation-bg" x="120.5" y="207" width="52" height="19" rx="3"></rect><text class="chapter-map-relation" x="146.5" y="220" text-anchor="middle">组合成</text><rect class="chapter-map-relation-bg" x="215.5" y="207" width="52" height="19" rx="3"></rect><text class="chapter-map-relation" x="241.5" y="220" text-anchor="middle">组合成</text><g class="chapter-map-node"><rect x="119" y="32" width="150" height="56" rx="8"></rect><text text-anchor="middle"><tspan x="194" y="66">向量运算</tspan></text></g><g class="chapter-map-node"><rect x="24" y="136" width="150" height="56" rx="8"></rect><text text-anchor="middle"><tspan x="99" y="170">向量相加</tspan></text></g><g class="chapter-map-node"><rect x="214" y="136" width="150" height="56" rx="8"></rect><text text-anchor="middle"><tspan x="289" y="170">数乘</tspan></text></g><g class="chapter-map-node"><rect x="119" y="240" width="150" height="56" rx="8"></rect><text text-anchor="middle"><tspan x="194" y="274">线性组合</tspan></text></g></svg></div></figure>
 <blockquote>
 <p>功能演示，题目自编，无真实课件页码。未提供原始资料，本文不包含 PDF 原题；讲解、示范与练习均为自编。</p>
 </blockquote>

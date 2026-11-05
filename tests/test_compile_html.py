@@ -2,14 +2,17 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from html.parser import HTMLParser
 from pathlib import Path
+import re
 import tempfile
 import unittest
 import subprocess
 import sys
 from unittest.mock import patch
 from urllib.parse import unquote, urlsplit
+import xml.etree.ElementTree as ET
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -83,6 +86,189 @@ class CompileHTMLTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, message):
             self.compiler.compile_course(self.source, self.target)
         self.assertFalse(self.target.exists(), '校验失败不应留下成品')
+
+    @staticmethod
+    def chapter_map(nodes=None, edges=None):
+        graph = {
+            'nodes': nodes if nodes is not None else [
+                {'id': 'a', 'label': '向量运算'}, {'id': 'b', 'label': '向量相加'},
+                {'id': 'c', 'label': '数乘'}],
+            'edges': edges if edges is not None else [
+                {'from': 'a', 'to': 'b', 'relation': '包含'},
+                {'from': 'b', 'to': 'c', 'relation': '并列'}],
+        }
+        return '```chapter-map\n' + json.dumps(graph, ensure_ascii=False) + '\n```'
+
+    def test_chapter_map_is_accessible_static_svg_before_the_first_preface(self):
+        _, index_text, index = self.build('# 课程\n\n导言仍须先读。\n\n## 第一章\n\n' + self.chapter_map() + '\n\n### 正文\n\n解释。')
+        _, text, page = self.chapter(index)
+        self.assertNotIn('<figure', index_text)
+        main = text.split('<main id="content"', 1)[1]
+        self.assertRegex(main, r'</h1>\s*<figure class="chapter-map">')
+        self.assertLess(main.index('</figure>'), main.index('导言仍须先读'))
+        self.assertEqual(sum(tag == 'figure' and attrs.get('class') == 'chapter-map' for tag, attrs in page.tags), 1)
+        self.assertFalse(any(tag == 'code' and attrs.get('class') == 'language-chapter-map' for tag, attrs in page.tags))
+        self.assertTrue(any(tag == 'div' and attrs.get('class') == 'chapter-map-canvas' and attrs.get('tabindex') == '0' for tag, attrs in page.tags))
+        svg = ET.fromstring(re.search(r'<svg\b.*?</svg>', text, re.S).group(0))
+        ids = {element.get('id'): element for element in svg.iter() if element.get('id')}
+        self.assertEqual(svg.get('role'), 'img')
+        self.assertTrue(svg.get('viewBox'))
+        self.assertTrue(svg.get('width') and svg.get('height'))
+        for identifier in svg.get('aria-labelledby').split():
+            self.assertIn(identifier, ids)
+        description = ''.join(svg.find('desc').itertext())
+        self.assertIn('向量运算 包含 向量相加', description)
+        self.assertIn('向量相加 并列 数乘', description)
+        edges = [element for element in svg.iter('path') if element.get('class') == 'chapter-map-edge']
+        self.assertEqual(len(edges), 2)
+        self.assertTrue(edges[0].get('marker-end', '').startswith('url(#'))
+        self.assertIsNone(edges[1].get('marker-end'))
+        self.assertEqual([element.text for element in svg.iter('text') if element.get('class') == 'chapter-map-relation'], ['包含', '并列'])
+
+    def test_maps_repeated_in_distinct_chapters_have_unique_local_resources(self):
+        source = '# 课程\n\n<p id="chapter-map-1-arrow">保留锚点。</p>\n\n## 一\n\n' + self.chapter_map() + '\n\n## 二\n\n' + self.chapter_map()
+        _, _, index = self.build(source)
+        seen = set()
+        for number in range(2):
+            _, text, page = self.chapter(index, number)
+            svg = ET.fromstring(re.search(r'<svg\b.*?</svg>', text, re.S).group(0))
+            ids = {element.get('id') for element in svg.iter() if element.get('id')}
+            self.assertFalse(seen & ids)
+            seen.update(ids)
+            page_ids = [attrs['id'] for _, attrs in page.tags if 'id' in attrs]
+            self.assertEqual(len(page_ids), len(set(page_ids)))
+            for element in svg.iter('path'):
+                if element.get('marker-end'):
+                    self.assertIn(element.get('marker-end')[5:-1], ids)
+
+    def test_chapter_map_labels_are_escaped_wrapped_and_do_not_load_resources(self):
+        label = '很长的中文知识点需要分成多行'
+        nodes = [{'id': 'a', 'label': label}, {'id': 'b', 'label': '<script>x</script>&乙'}]
+        _, text, page = self.read('# 课程\n\n## 一\n\n' + self.chapter_map(nodes, [{'from': 'a', 'to': 'b', 'relation': '<包含&>'}]))
+        svg = ET.fromstring(re.search(r'<svg\b.*?</svg>', text, re.S).group(0))
+        node_groups = [element for element in svg.iter('g') if element.get('class') == 'chapter-map-node']
+        self.assertEqual(len(node_groups), 2)
+        self.assertEqual(''.join(node_groups[0].find('text').itertext()), label)
+        self.assertGreater(len(node_groups[0].findall('.//tspan')), 1)
+        self.assertEqual(''.join(node_groups[1].find('text').itertext()), nodes[1]['label'])
+        self.assertFalse(any(tag in {'foreignobject', 'image'} for tag, _ in page.tags))
+        self.assertNotIn('<script>x</script>', text)
+
+    def test_chapter_map_is_optional_and_other_fenced_code_is_unchanged(self):
+        _, text, page = self.read('# 旧稿\n\n## 一\n\n### 普通小节\n\n```json\n{"nodes": []}\n```')
+        self.assertNotIn('<figure class="chapter-map">', text)
+        self.assertIn('{"nodes": []}', ''.join(page.code))
+
+    def test_chapter_map_examples_inside_other_code_remain_literal(self):
+        literal = '```chapter-map\n{"nodes": [], "edges": []}\n```'
+        _, text, page = self.read('# 课程\n\n## 一\n\n````text\n' + literal + '\n````')
+        self.assertIn(literal, ''.join(page.code))
+        self.assertNotIn('<figure class="chapter-map">', text)
+
+    def test_parallel_concepts_share_a_row_without_an_arrow(self):
+        edges = [{'from': 'a', 'to': 'b', 'relation': '包含'},
+                 {'from': 'a', 'to': 'c', 'relation': '包含'},
+                 {'from': 'b', 'to': 'c', 'relation': '并列'}]
+        _, text, _ = self.read('# 课程\n\n## 一\n\n' + self.chapter_map(edges=edges))
+        svg = ET.fromstring(re.search(r'<svg\b.*?</svg>', text, re.S).group(0))
+        rects = [element.find('rect') for element in svg.iter('g') if element.get('class') == 'chapter-map-node']
+        self.assertEqual(rects[1].get('y'), rects[2].get('y'))
+        self.assertLess(float(rects[0].get('y')), float(rects[1].get('y')))
+
+    def test_chapter_map_skip_relation_routes_around_intermediate_nodes(self):
+        edges = [{'from': 'a', 'to': 'b', 'relation': '递进'},
+                 {'from': 'b', 'to': 'c', 'relation': '递进'},
+                 {'from': 'a', 'to': 'c', 'relation': '关联'}]
+        _, text, _ = self.read('# 课程\n\n## 一\n\n' + self.chapter_map(edges=edges))
+        svg = ET.fromstring(re.search(r'<svg\b.*?</svg>', text, re.S).group(0))
+        middle = [element.find('rect') for element in svg.iter('g') if element.get('class') == 'chapter-map-node'][1]
+        skip = [element for element in svg.iter('path') if element.get('class') == 'chapter-map-edge'][2]
+        coordinates = [float(value) for value in re.findall(r'-?\d+(?:\.\d+)?', skip.get('d'))]
+        self.assertLess(min(coordinates[1::2]), float(middle.get('y')), '跨层连线应绕过中间节点，而不是穿过文字')
+
+    def test_parallel_map_relation_routes_around_other_peers(self):
+        edges = [{'from': 'a', 'to': 'b', 'relation': '并列'},
+                 {'from': 'b', 'to': 'c', 'relation': '并列'},
+                 {'from': 'a', 'to': 'c', 'relation': '并列'}]
+        _, text, _ = self.read('# 课程\n\n## 一\n\n' + self.chapter_map(edges=edges))
+        svg = ET.fromstring(re.search(r'<svg\b.*?</svg>', text, re.S).group(0))
+        middle = [element.find('rect') for element in svg.iter('g') if element.get('class') == 'chapter-map-node'][1]
+        outer = [element for element in svg.iter('path') if element.get('class') == 'chapter-map-edge'][2]
+        coordinates = [float(value) for value in re.findall(r'-?\d+(?:\.\d+)?', outer.get('d'))]
+        self.assertLess(min(coordinates[1::2]), float(middle.get('y')))
+
+    def test_valid_map_relation_labels_do_not_cover_each_other(self):
+        cases = [
+            ('abcd', [('a', 'c', 'same'), ('b', 'd', 'same'), ('a', 'd', 'support'), ('b', 'c', 'advance')]),
+            ('abcde', [('a', 'b', 'step'), ('b', 'c', 'step'), ('c', 'd', 'step'), ('d', 'e', 'step'), ('a', 'e', 'overview'), ('b', 'd', 'method')]),
+            ('abcd', [('a', 'b', '并列'), ('b', 'c', '并列'), ('c', 'd', '并列'), ('a', 'd', '并列'), ('b', 'd', '并列'), ('a', 'c', '并列')]),
+        ]
+        for identifiers, relations in cases:
+            with self.subTest(relations=relations):
+                nodes = [{'id': identifier, 'label': identifier} for identifier in identifiers]
+                edges = [{'from': a, 'to': b, 'relation': relation} for a, b, relation in relations]
+                _, text, _ = self.read('# 课程\n\n## 一\n\n' + self.chapter_map(nodes, edges))
+                svg = ET.fromstring(re.search(r'<svg\b.*?</svg>', text, re.S).group(0))
+                boxes = []
+                for rect in svg.iter('rect'):
+                    if rect.get('class') != 'chapter-map-relation-bg':
+                        continue
+                    x, y, width, height = (float(rect.get(key)) for key in ('x', 'y', 'width', 'height'))
+                    for left, top, right, bottom in boxes:
+                        self.assertTrue(x + width <= left or right <= x or y + height <= top or bottom <= y,
+                                        '合法关系图中的关系文字不能被其它标签覆盖')
+                    boxes.append((x, y, x + width, y + height))
+
+    def test_chapter_map_accepts_single_node_and_bounded_dag(self):
+        for nodes, edges in [([{'id': 'a', 'label': '唯一节点'}], []),
+                             ([{'id': str(i), 'label': '节点' + str(i)} for i in range(8)],
+                              [{'from': str(i), 'to': str(i + 1), 'relation': '递进'} for i in range(7)])]:
+            with self.subTest(nodes=len(nodes)):
+                _, text, _ = self.read('# 课程\n\n## 一\n\n' + self.chapter_map(nodes, edges))
+                self.assertEqual(text.count('class="chapter-map-node"'), len(nodes))
+
+    def test_invalid_chapter_map_schema_reports_an_authoring_error(self):
+        valid_nodes = [{'id': 'a', 'label': '甲'}, {'id': 'b', 'label': '乙'}]
+        cases = [
+            '{', '[]', '{}', '{"nodes": [], "edges": []}',
+            json.dumps({'nodes': valid_nodes * 2, 'edges': []}),
+            json.dumps({'nodes': [{'id': str(i), 'label': '点'} for i in range(9)], 'edges': []}),
+            json.dumps({'nodes': [{'id': '', 'label': '甲'}], 'edges': []}),
+            json.dumps({'nodes': [{'id': 'a', 'label': ' '}], 'edges': []}),
+            json.dumps({'nodes': [{'id': 1, 'label': '甲'}], 'edges': []}),
+            json.dumps({'nodes': [{'id': 'a', 'label': '长' * 25}], 'edges': []}),
+            json.dumps({'nodes': valid_nodes, 'edges': [{'from': 'a', 'to': 'missing', 'relation': '包含'}]}),
+            json.dumps({'nodes': valid_nodes, 'edges': [{'from': 'a', 'to': 'b', 'relation': ''}]}),
+            json.dumps({'nodes': valid_nodes, 'edges': [{'from': 'a', 'to': 'b', 'relation': '长' * 13}]}),
+            json.dumps({'nodes': valid_nodes, 'edges': [{'from': 'a', 'to': 'a', 'relation': '包含'}]}),
+            json.dumps({'nodes': valid_nodes, 'edges': [{'from': 'a', 'to': 'b', 'relation': '包含'}, {'from': 'b', 'to': 'a', 'relation': '递进'}]}),
+            json.dumps({'nodes': valid_nodes, 'edges': [{'from': 'a', 'to': 'b', 'relation': '包含'}] * 13}),
+            json.dumps({'nodes': valid_nodes, 'edges': [{'from': 'a', 'to': 'b', 'relation': '并列'}, {'from': 'a', 'to': 'b', 'relation': '包含'}]}),
+        ]
+        for value in cases:
+            with self.subTest(value=value):
+                self.assert_invalid('# 课程\n\n## 一\n\n```chapter-map\n' + value + '\n```', 'chapter-map|关系图')
+
+    def test_maps_must_be_once_directly_after_a_top_level_chapter_heading(self):
+        graph = self.chapter_map()
+        invalid = [
+            '# 课程\n\n' + graph + '\n\n## 一\n\n正文。',
+            '# 课程\n\n## 一\n\n正文。\n\n' + graph,
+            '# 课程\n\n## 一\n\n' + graph + '\n\n' + graph,
+            '# 课程\n\n## 一\n\n<details markdown="1">\n<summary>答案</summary>\n\n' + graph + '\n</details>',
+            '# 课程\n\n## 一\n\n<section class="prerequisite" id="lesson" markdown="1">\n### 小课堂\n\n' + graph + '\n</section>',
+        ]
+        for source in invalid:
+            with self.subTest(source=source):
+                self.assert_invalid(source, 'chapter-map|关系图')
+
+    def test_invalid_map_keeps_all_existing_course_pages_intact(self):
+        self.build('# 课程\n\n## 一\n\n正文。')
+        before = {path: path.read_bytes() for path in self.target.parent.rglob('*.html')}
+        self.source.write_text('# 课程\n\n## 一\n\n```chapter-map\n{\n```', encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'chapter-map|关系图'):
+            self.compiler.compile_course(self.source, self.target)
+        self.assertEqual(before, {path: path.read_bytes() for path in self.target.parent.rglob('*.html')})
 
     def test_code_keeps_indentation_blank_lines_and_literal_dollars(self):
         _, _, page = self.read('# 一起看向量\n\n```python\ndef f():\n    price = "$5"\n\n    return price\n```\n\n行内代码 `$x$`。')

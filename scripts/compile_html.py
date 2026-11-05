@@ -11,18 +11,317 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
+import json
 from html import escape, unescape
 from html.parser import HTMLParser
 import mimetypes
 from pathlib import Path
 import re
 import posixpath
+import unicodedata
 from urllib.parse import quote, unquote, urlsplit
 import xml.etree.ElementTree as ET
 
 
 ASSETS = Path(__file__).resolve().parents[1] / 'assets'
 INSTALL_HELP = '请在项目环境执行：python -m pip install -r requirements.txt'
+
+
+class ChapterMapPlacement(HTMLParser):
+    """Keep a map at a chapter's entrance, outside answers and classrooms."""
+
+    VOID = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'}
+
+    def __init__(self):
+        super().__init__()
+        self.stack = []
+        self.ids = set()
+        self.chapter = False
+        self.after_heading = False
+        self.maps = 0
+
+    def handle_starttag(self, tag, attrs):
+        values = dict(attrs)
+        if values.get('id'):
+            self.ids.add(values['id'])
+        if tag == 'figure' and 'chapter-map' in values.get('class', '').split():
+            if self.stack or not self.chapter or not self.after_heading or self.maps:
+                raise ValueError('chapter-map 关系图每章最多一张，必须紧跟顶层 ## 标题，不能放进正文、折叠答案或小课堂')
+            self.maps += 1
+        if not self.stack:
+            if tag == 'h2':
+                self.chapter = True
+                self.maps = 0
+            self.after_heading = False
+        if tag not in self.VOID:
+            self.stack.append(tag)
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+        if tag not in self.VOID:
+            self.handle_endtag(tag)
+
+    def handle_endtag(self, tag):
+        if tag not in self.VOID and self.stack and self.stack[-1] == tag:
+            self.stack.pop()
+            if tag == 'h2' and not self.stack:
+                self.after_heading = True
+
+    def handle_data(self, data):
+        if not self.stack and data.strip():
+            self.after_heading = False
+
+
+def _chapter_map_svg(value: str, prefix: str) -> str:
+    """Render the author's small, explicit graph without runtime dependencies."""
+    def invalid(reason):
+        raise ValueError('chapter-map 关系图：' + reason)
+
+    def short_text(value, field, limit):
+        if (not isinstance(value, str) or not value.strip() or len(value) > limit
+                or any(unicodedata.category(char) in {'Cc', 'Cs'} for char in value)):
+            invalid(f'{field} 须为 1–{limit} 字符的非空单行字符串')
+        return value.strip()
+
+    try:
+        graph = json.loads(value)
+    except (ValueError, RecursionError) as exc:
+        invalid(f'JSON 无法解析，请检查引号和逗号（{exc}）')
+    if not isinstance(graph, dict) or set(graph) != {'nodes', 'edges'}:
+        invalid('JSON 必须只包含 nodes 和 edges')
+    nodes, edges = graph['nodes'], graph['edges']
+    if not isinstance(nodes, list) or not 1 <= len(nodes) <= 8:
+        invalid('nodes 需要 1–8 个唯一节点；请简化关系图')
+    if not isinstance(edges, list) or len(edges) > 12:
+        invalid('edges 需要 0–12 条关系；请简化关系图')
+    labels = {}
+    for node in nodes:
+        if not isinstance(node, dict) or set(node) != {'id', 'label'}:
+            invalid('每个节点必须只包含 id 和 label')
+        identifier = short_text(node['id'], '节点 id', 48)
+        label = short_text(node['label'], '节点 label', 24)
+        if identifier in labels:
+            invalid(f'节点 id 重复：{identifier}')
+        labels[identifier] = label
+    relations, pairs = [], set()
+    for edge in edges:
+        if not isinstance(edge, dict) or set(edge) != {'from', 'to', 'relation'}:
+            invalid('每条关系必须只包含 from、to 和 relation')
+        start = short_text(edge['from'], 'from', 48)
+        end = short_text(edge['to'], 'to', 48)
+        relation = short_text(edge['relation'], 'relation', 12)
+        if start not in labels or end not in labels:
+            invalid('关系的 from/to 必须引用已定义节点')
+        if start == end:
+            invalid('不支持自连线；请简化关系图')
+        pair = frozenset((start, end))
+        if pair in pairs:
+            invalid('同一对节点只能声明一条关系；请合并重复或矛盾关系')
+        pairs.add(pair)
+        relations.append((start, end, relation))
+
+    # Parallel concepts share a layer. Contract their groups before checking
+    # directed relations, so parallel + prerequisite contradictions fail too.
+    parents = {identifier: identifier for identifier in labels}
+
+    def group(identifier):
+        while parents[identifier] != identifier:
+            identifier = parents[identifier]
+        return identifier
+
+    for start, end, relation in relations:
+        if relation == '并列':
+            parents[group(end)] = group(start)
+    members = {}
+    for identifier in labels:
+        members.setdefault(group(identifier), []).append(identifier)
+    outgoing = {identifier: set() for identifier in members}
+    incoming = {identifier: 0 for identifier in members}
+    for start, end, relation in relations:
+        if relation == '并列':
+            continue
+        a, b = group(start), group(end)
+        if a == b:
+            invalid('并列节点之间不能同时声明有向关系；请简化关系图')
+        if b not in outgoing[a]:
+            outgoing[a].add(b)
+            incoming[b] += 1
+    queue = [identifier for identifier in members if incoming[identifier] == 0]
+    ranks = {identifier: 0 for identifier in members}
+    visited = 0
+    for identifier in queue:
+        visited += 1
+        for child in members:
+            if child not in outgoing[identifier]:
+                continue
+            ranks[child] = max(ranks[child], ranks[identifier] + 1)
+            incoming[child] -= 1
+            if incoming[child] == 0:
+                queue.append(child)
+    if visited != len(members):
+        invalid('有向关系形成环；请简化为无环关系图')
+    layers = [[] for _ in range(max(ranks.values()) + 1)]
+    for identifier, children in members.items():
+        layers[ranks[identifier]].extend(children)
+
+    def units(text):
+        return sum(2 if unicodedata.east_asian_width(char) in {'W', 'F'} else 1 for char in text)
+
+    def lines(text):
+        result, line = [], ''
+        for char in text:
+            if line and units(line + char) > 16:
+                result.append(line)
+                line = ''
+            line += char
+        return result + [line]
+
+    wrapped = {identifier: lines(label) for identifier, label in labels.items()}
+    node_width = 150
+    node_height = max(56, max(len(value) for value in wrapped.values()) * 20 + 16)
+    relation_width = max((units(relation) * 7 for _, _, relation in relations), default=0)
+    horizontal_gap = max(64, relation_width + 20)
+    horizontal = (len(labels) <= 3 and all(len(layer) == 1 for layer in layers)
+                  and len(labels) * node_width + (len(labels) - 1) * horizontal_gap + 48 <= 704)
+    positions = {}
+    edge_tracks, peer_tracks, skip_lanes = {}, {}, {}
+    if horizontal:
+        width = len(layers) * node_width + (len(layers) - 1) * horizontal_gap + 48
+        height = node_height + 64
+        for rank, layer in enumerate(layers):
+            positions[layer[0]] = (24 + rank * (node_width + horizontal_gap), 32)
+    else:
+        # Extra horizontal room between peers carries a readable parallel label.
+        peer_gap = max(40, 2 * relation_width - 126)
+        if any(r == '并列' for _, _, r in relations):
+            peer_gap = max(peer_gap, relation_width + 20)
+        width = max(len(layer) for layer in layers) * (node_width + peer_gap) - peer_gap + 48
+        height = len(layers) * node_height + (len(layers) - 1) * 48 + 64
+        for rank, layer in enumerate(layers):
+            layer_width = len(layer) * (node_width + peer_gap) - peer_gap
+            for column, identifier in enumerate(layer):
+                positions[identifier] = ((width - layer_width) / 2 + column * (node_width + peer_gap), 32 + rank * (node_height + 48))
+        # Share a label track only when its horizontal boxes do not overlap.
+        # Reserve separate gutters for long edges, rather than stacking text.
+        tracks, above_tracks = {}, {}
+
+        def take_track(bucket, center, text_width):
+            left, right = center - text_width / 2 - 4, center + text_width / 2 + 4
+            for track, intervals in enumerate(bucket):
+                if all(right <= a or b <= left for a, b in intervals):
+                    intervals.append((left, right))
+                    return track
+            bucket.append([(left, right)])
+            return len(bucket) - 1
+
+        for index, (start, end, relation) in enumerate(relations):
+            rank, end_rank = ranks[group(start)], ranks[group(end)]
+            x1, y1 = positions[start]
+            x2, y2 = positions[end]
+            center = (x1 + x2 + node_width) / 2
+            text_width = units(relation) * 7 + 10
+            if end_rank - rank > 1:
+                skip_lanes[index] = len(skip_lanes)
+            elif end_rank == rank:
+                if any(other_y == y1 and min(x1, x2) < other_x < max(x1, x2)
+                       for other_x, other_y in positions.values()):
+                    peer_tracks[index] = take_track(above_tracks.setdefault(rank, []), center, text_width)
+            else:
+                edge_tracks[index] = take_track(tracks.setdefault(rank, []), center, text_width)
+        layer_y = [32 + max(0, len(above_tracks.get(0, [])) - 1) * 24]
+        for rank in range(1, len(layers)):
+            gap = max(48, (len(tracks.get(rank - 1, [])) + 1) * 24)
+            layer_y.append(layer_y[-1] + node_height + gap + len(above_tracks.get(rank, [])) * 24)
+        for identifier, (x, _) in positions.items():
+            positions[identifier] = (x, layer_y[ranks[group(identifier)]])
+        height = layer_y[-1] + node_height + 32
+        base_width, lane_pitch = width, relation_width + 34
+        if skip_lanes:
+            width += 24 + len(skip_lanes) * lane_pitch
+
+    paths, relation_labels, node_markup = [], [], []
+    for index, (start, end, relation) in enumerate(relations):
+        x1, y1 = positions[start]
+        x2, y2 = positions[end]
+        skip = ranks[group(end)] - ranks[group(start)] > 1
+        if horizontal or y1 == y2:
+            direction = 1 if x2 > x1 else -1
+            a = x1 + (node_width if direction == 1 else 0)
+            b = x2 + (0 if direction == 1 else node_width)
+            y = y1 + node_height / 2
+            obstructed = any(other_y == y1 and min(x1, x2) < other_x < max(x1, x2)
+                             for other_x, other_y in positions.values())
+            if (horizontal and skip) or obstructed:
+                gap = horizontal_gap if horizontal else peer_gap
+                left, right = a + direction * gap / 3, b - direction * gap / 3
+                above = y1 - 20 - peer_tracks.get(index, 0) * 24
+                path = f'M {a:g} {y:g} L {left:g} {y:g} L {left:g} {above:g} L {right:g} {above:g} L {right:g} {y:g} L {b:g} {y:g}'
+                label_x, label_y = (a + b) / 2, above + 4
+            else:
+                path = f'M {a:g} {y:g} L {b:g} {y:g}'
+                label_x, label_y = (a + b) / 2, y - 11
+        else:
+            a, b = x1 + node_width / 2, x2 + node_width / 2
+            top, bottom = y1 + node_height, y2
+            middle = (top + bottom) / 2
+            if skip:
+                lane = base_width + 12 + (skip_lanes[index] + 0.5) * lane_pitch
+                path = f'M {a:g} {top:g} L {a:g} {top + 12:g} L {lane:g} {top + 12:g} L {lane:g} {bottom - 12:g} L {b:g} {bottom - 12:g} L {b:g} {bottom:g}'
+                label_x, label_y = lane, middle + 4
+            else:
+                lane = top + 24 + edge_tracks[index] * 24
+                label_x, label_y = (a + b) / 2, lane + 4
+                path = f'M {a:g} {top:g} Q {a:g} {lane:g}, {label_x:g} {lane:g} Q {b:g} {lane:g}, {b:g} {bottom:g}'
+        marker = f' marker-end="url(#{prefix}-arrow)"' if relation != '并列' else ''
+        paths.append(f'<path class="chapter-map-edge" d="{path}"{marker}></path>')
+        label_width = units(relation) * 7 + 10
+        relation_labels.append(
+            f'<rect class="chapter-map-relation-bg" x="{label_x - label_width / 2:g}" y="{label_y - 13:g}" width="{label_width}" height="19" rx="3"></rect>'
+            f'<text class="chapter-map-relation" x="{label_x:g}" y="{label_y:g}" text-anchor="middle">{escape(relation)}</text>')
+    for identifier, label_lines in wrapped.items():
+        x, y = positions[identifier]
+        center = x + node_width / 2
+        baseline = y + node_height / 2 - (len(label_lines) - 1) * 10 + 6
+        text = ''.join(f'<tspan x="{center:g}" y="{baseline + line_number * 20:g}">{escape(line)}</tspan>' for line_number, line in enumerate(label_lines))
+        node_markup.append(
+            f'<g class="chapter-map-node"><rect x="{x:g}" y="{y:g}" width="{node_width}" height="{node_height}" rx="8"></rect>'
+            f'<text text-anchor="middle">{text}</text></g>')
+    description = '节点：' + '、'.join(labels.values()) + '。关系：' + (
+        '；'.join(f'{labels[start]} {relation} {labels[end]}' for start, end, relation in relations) if relations else '无连线') + '。'
+    return (
+        '<figure class="chapter-map"><figcaption>这一章的知识关系</figcaption>'
+        '<div class="chapter-map-canvas" tabindex="0">'
+        f'<svg role="img" aria-labelledby="{prefix}-title {prefix}-desc" viewBox="0 0 {width:g} {height:g}" width="{width:g}" height="{height:g}" style="--map-width: {width:g}px">'
+        f'<title id="{prefix}-title">这一章的知识关系</title><desc id="{prefix}-desc">{escape(description)}</desc>'
+        f'<defs><marker id="{prefix}-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">'
+        '<path class="chapter-map-arrow" d="M 0 0 L 10 5 L 0 10 z"></path></marker></defs>'
+        + ''.join(paths + relation_labels + node_markup) + '</svg></div></figure>'
+    )
+
+
+def _render_chapter_maps(body: str) -> str:
+    # Only the exact fenced-code output is eligible; escaped examples inside
+    # other code blocks cannot accidentally become a diagram.
+    pattern = re.compile(r'<pre><code class="language-chapter-map">([^<]*)</code></pre>')
+    inspector = ChapterMapPlacement()
+    inspector.feed(body)
+    reserved = inspector.ids
+    number = 0
+
+    def replace(match):
+        nonlocal number
+        while True:
+            number += 1
+            prefix = f'chapter-map-{number}'
+            identifiers = {prefix + suffix for suffix in ('-title', '-desc', '-arrow')}
+            if not identifiers & reserved:
+                reserved.update(identifiers)
+                return _chapter_map_svg(unescape(match.group(1)), prefix)
+
+    result = pattern.sub(replace, body)
+    inspector = ChapterMapPlacement()
+    inspector.feed(result)
+    return result
 
 
 def _mathml(latex: str, display: str) -> str:
@@ -94,7 +393,7 @@ def _render_markdown(source: str):
     )
     body = converter.convert(source)
     # The reader owns one navigation area even if a manuscript contains [TOC].
-    body = body.replace(converter.toc, '')
+    body = _render_chapter_maps(body.replace(converter.toc, ''))
     return body, converter.toc_tokens, len(converter.toc_tokens)
 
 
@@ -213,8 +512,10 @@ class OfflineBody(HTMLParser):
                         section['solution'] = True
         if tag == 'details':
             self.details_depth += 1
+        svg_names = {'viewbox': 'viewBox', 'refx': 'refX', 'refy': 'refY',
+                     'markerwidth': 'markerWidth', 'markerheight': 'markerHeight'} if tag in {'svg', 'marker'} else {}
         self.output.append('<' + tag + ''.join(
-            f' {name}' if value is None else f' {name}="{escape(value, quote=True)}"'
+            f' {svg_names.get(name, name)}' if value is None else f' {svg_names.get(name, name)}="{escape(value, quote=True)}"'
             for name, value in values.items()
         ) + '>')
 
@@ -485,12 +786,16 @@ def _compile_pages(source: Path, target: Path, title: str | None,
     splitter = ChapterPages(target.name, chapter_folder, parser.ids)
     groups = splitter.split(course_body)
     # The entry page is only a chapter directory. Keep any manuscript preface
-    # immediately after the first chapter heading, including its anchor targets.
+    # after the first chapter's map (when present), including its anchor targets.
     first_path = splitter.chapters[0]['path']
     introduction = groups[target.name]
     if introduction.strip():
         heading = re.search(r'<h2(?:\s[^>]*)?>.*?</h2>', groups[first_path], re.S)
-        groups[first_path] = groups[first_path][:heading.end()] + introduction + groups[first_path][heading.end():]
+        insertion = heading.end()
+        entry_map = re.match(r'(?:\s|<!--.*?-->)*<figure class="chapter-map">.*?</figure>', groups[first_path][insertion:], re.S)
+        if entry_map:
+            insertion += entry_map.end()
+        groups[first_path] = groups[first_path][:insertion] + introduction + groups[first_path][insertion:]
         for identifier, path in splitter.id_pages.items():
             if path == target.name:
                 splitter.id_pages[identifier] = first_path

@@ -50,6 +50,23 @@ def verify():
             assert [unquote(fragment[1:]) for fragment in fragments] == headings
             assert chapter.locator('.reader-sidebar .chapter-link').count() == 0
 
+        def assert_chapter_map(chapter):
+            diagram = chapter.locator('main > figure.chapter-map')
+            assert diagram.count() == 1
+            assert chapter.locator('main > h1').evaluate(
+                'heading => heading.nextElementSibling.matches("figure.chapter-map")')
+            assert 1 <= diagram.locator('.chapter-map-node').count() <= 8
+            assert diagram.locator('.chapter-map-edge').count() <= 12
+            assert diagram.locator('svg[role=img] title, svg[role=img] desc').count() == 2
+            assert diagram.locator('foreignObject, script, image, pre').count() == 0
+            assert diagram.locator('.chapter-map-canvas').get_attribute('tabindex') == '0'
+            assert chapter.evaluate('document.documentElement.scrollWidth <= innerWidth')
+            # Labels stay readable when the canvas scrolls on a narrow screen.
+            assert diagram.locator('.chapter-map-node text').evaluate_all('''items => items.every(text => {
+                const matrix = text.getScreenCTM();
+                return parseFloat(getComputedStyle(text).fontSize) * Math.hypot(matrix.a, matrix.b) >= 12;
+            })''')
+
         def follow_local_topic(chapter):
             topic = chapter.locator('.reader-sidebar .topic-link').last
             fragment = topic.get_attribute('href')
@@ -72,7 +89,7 @@ def verify():
         index.goto(COURSE.as_uri())
         assert index.locator('h1').count() == 1
         assert index.locator('.chapter-entry').count() == 3
-        assert index.locator('.reader-sidebar, .toc, main h2, main h3, main p, main blockquote, pre, .exercise, .term').count() == 0
+        assert index.locator('.reader-sidebar, .toc, main h2, main h3, main p, main blockquote, pre, .exercise, .term, .chapter-map').count() == 0
         assert '未提供原始资料' not in index.locator('main').inner_text()
         chapter_urls = [urljoin(index.url, link.get_attribute('href')) for link in index.locator('.chapter-entry').all()]
         assert len(set(chapter_urls)) == 3
@@ -83,6 +100,9 @@ def verify():
             assert opened.locator('main h1').count() == 1
             assert opened.locator('main h1').inner_text().startswith(('第一章', '第二章', '第三章')[number])
             assert_local_topics(opened, (2, 2, 1)[number])
+            assert_chapter_map(opened)
+            opened.locator('.chapter-map').screenshot(
+                path=str(PREVIEW / f'reader-map-chapter-{number + 1:02d}.png'))
             if number == 0:
                 page = opened
                 assert page.locator('main blockquote').count() == 1
@@ -92,6 +112,7 @@ def verify():
                 opened.close()
         assert len(context.pages) == 2
         results['index'] = 'title and chapter entries only; all three open new tabs and preserve index: pass'
+        results['chapter_maps'] = 'one static knowledge map directly after each chapter title; authored relationships, readable labels: pass'
 
         assert page.evaluate('getComputedStyle(document.documentElement).scrollBehavior') == 'smooth'
         page.emulate_media(reduced_motion='reduce')
@@ -132,7 +153,7 @@ def verify():
             assert '/lessons/' in lesson.url and lesson.url.endswith('#term-rank')
             assert lesson.locator('#term-rank').count() == 1
             assert lesson.locator('math').count() > 0
-            assert lesson.locator('.reader-sidebar, .exercise').count() == 0
+            assert lesson.locator('.reader-sidebar, .exercise, .chapter-map').count() == 0
             assert page.url == before_url
             assert abs(page.evaluate('window.scrollY') - before_y) < 2
             assert index.url == COURSE.as_uri()
@@ -151,6 +172,10 @@ def verify():
         page.evaluate("window.dispatchEvent(new Event('afterprint'))")
         assert page.locator('details.hint[open]').count() == 1
         assert page.locator('details.solution[open]').count() == 0
+        page.emulate_media(media='print')
+        assert page.locator('.chapter-map-canvas').evaluate(
+            'canvas => canvas.scrollWidth <= canvas.clientWidth + 1')
+        page.emulate_media(media='screen')
         page.locator('a.index-link').click()
         page.wait_for_url(COURSE.as_uri())
         assert index.url == COURSE.as_uri()
@@ -166,12 +191,18 @@ def verify():
             chapter.emulate_media(reduced_motion='reduce')
             chapter.wait_for_function('!document.querySelector(".toc-disclosure").open')
             assert_local_topics(chapter, 2)
+            assert_chapter_map(chapter)
+            canvas = chapter.locator('.chapter-map-canvas')
+            if canvas.evaluate('item => item.scrollWidth > item.clientWidth'):
+                canvas.press('ArrowRight')
+                chapter.wait_for_function('document.querySelector(".chapter-map-canvas").scrollLeft > 0')
             chapter.locator('.toc-disclosure > summary').click()
             follow_local_topic(chapter)
             assert chapter.locator('.toc-disclosure[open]').count() == 0
             assert chapter.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
             if width == 390:
                 chapter.goto(chapter_urls[1])
+                chapter.locator('.chapter-map-canvas').evaluate('canvas => { canvas.scrollLeft = 0; }')
                 chapter.screenshot(path=str(PREVIEW / 'reader-mobile.png'), full_page=True)
                 chapter.evaluate('''() => {
                     const block = document.createElement('div');
@@ -187,6 +218,7 @@ def verify():
         fallback_index = no_js.new_page()
         fallback_index.goto(COURSE.as_uri())
         fallback = open_chapter(no_js, fallback_index, 0)
+        assert_chapter_map(fallback)
         assert fallback.locator('math').count() > 10
         topic = fallback.locator('.topic-link').last
         fragment = topic.get_attribute('href')
@@ -221,6 +253,7 @@ def verify():
             reader = open_chapter(relocated, moved_index, 0)
             assert reader.url.startswith(moved.as_uri())
             assert reader.locator('math').count() > 10
+            assert_chapter_map(reader)
             with relocated.expect_page() as opened:
                 reader.locator('#mention-rank').click()
             separate = opened.value

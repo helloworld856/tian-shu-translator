@@ -6,6 +6,10 @@
 
 ## 第一章：先想象你在方格纸上走路
 
+```chapter-map
+{"nodes":[{"id":"operations","label":"向量运算"},{"id":"addition","label":"向量相加"},{"id":"scaling","label":"数乘"},{"id":"combination","label":"线性组合"}],"edges":[{"from":"operations","to":"addition","relation":"包含"},{"from":"operations","to":"scaling","relation":"包含"},{"from":"addition","to":"combination","relation":"组合成"},{"from":"scaling","to":"combination","relation":"组合成"}]}
+```
+
 ### 用坐标记下一次移动
 
 从原点出发，向右走一步，可以记成向量 $u=(1,0)$。括号里的第一个数表示向右移动多少，第二个数表示向上移动多少；负数就表示向相反方向移动。另一个向量 $v=(1,1)$ 表示向右、向上各走一步。
@@ -25,6 +29,10 @@ $a$ 和 $b$ 叫作系数，也就是你给两支向量各选的倍数。上式�
 这两支向量能拼出平面上的任何一次移动。稍后会看到，把它们并排写进矩阵后，<a id="mention-rank" class="term" href="#term-rank">矩阵的秩</a>为 $2$，意思是这里有两个彼此独立的方向。如果“秩”还是陌生词，可以点开新标签页里的小课堂，读完关闭它或切回正文，这里的位置不会动；先继续看怎么算也完全可以。
 
 ## 第二章：跟着拼一次，到达 $(3,2)$
+
+```chapter-map
+{"nodes":[{"id":"equations","label":"列坐标方程"},{"id":"coefficients","label":"求出系数"},{"id":"verify","label":"代回核对"}],"edges":[{"from":"equations","to":"coefficients","relation":"递进"},{"from":"coefficients","to":"verify","relation":"递进"}]}
+```
 
 ### 对照目标坐标，手算系数
 
@@ -58,6 +66,10 @@ print(result)
 ```
 
 ## 第三章：自己拼一次（自编题）
+
+```chapter-map
+{"nodes":[{"id":"practice","label":"动手组合"},{"id":"coordinates","label":"坐标条件"},{"id":"direction","label":"负系数方向"},{"id":"verify","label":"代回检查"}],"edges":[{"from":"practice","to":"coordinates","relation":"涉及"},{"from":"practice","to":"direction","relation":"涉及"},{"from":"coordinates","to":"verify","relation":"用于检查"},{"from":"direction","to":"verify","relation":"用于检查"}]}
+```
 
 <section class="exercise" id="exercise-demo" markdown="1">
 
