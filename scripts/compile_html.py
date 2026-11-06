@@ -18,6 +18,7 @@ import mimetypes
 from pathlib import Path
 import re
 import posixpath
+import sys
 import unicodedata
 from urllib.parse import quote, unquote, urlsplit
 import xml.etree.ElementTree as ET
@@ -930,6 +931,12 @@ def build_course(source: Path, output_folder: Path, title: str | None = None) ->
 
 
 def main():
+    # The CLI has one encoding for console messages and captured logs. Keep
+    # library imports neutral, and allow callers to substitute text streams.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, 'reconfigure', None)
+        if reconfigure is not None:
+            reconfigure(encoding='utf-8', errors='backslashreplace')
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('markdown', type=Path, help='Markdown/语义 HTML 母稿')
     parser.add_argument('output_folder', type=Path, help='完整课程文件夹（自动生成 index.html、chapters/ 和可选的 lessons/）')

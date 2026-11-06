@@ -95,6 +95,8 @@ output/课程名/
 
 教学章节的 `##` 后直接放一个 `chapter-map` fenced JSON 块，明确写出知识点与连线关系；编译器将其生成内联静态 SVG，放在章节标题下、导言或正文前，离线可读，不进入本章小节目录。建议 3–6 个节点，不机械收集所有关系类型；完整语法见 [章节思维导图](references/textbook-template.md#章节思维导图)。旧的无图母稿仍可编译，新制作的教学章节须有图，小课堂无需加图。
 
+编译器检查已提供关系图的结构与位置，不会仅因缺图而构建失败；哪些章节承担教学内容、是否逐章配图及关系是否准确，仍须按覆盖模板核对。
+
 `#` 课程标题后、第一个 `##` 前的导言由编译器完整移到第一章思维导图后（旧无图母稿仍在标题后），索引页不显示；没有任何 `##` 的短母稿兼容为名为“正文”的单章，索引页仍只列章节入口。章节结构、公式、图片与 HTML 交互块的完整写法集中在 [写作母版](references/textbook-template.md)。
 
 编译器不复制母稿，所以制作时须直接保存在课程 `_work/` 内。本地图片路径相对输入母稿目录；编译时图片、CSS、JavaScript 与 MathML 均内联。核心阅读不依赖网络、文件夹外的路径或原 PDF。编译器会拒绝重复 ID、失效锚点、缺失或远程图片、拆页后失效的 SVG 资源引用，以及缺少解析或提前展开答案的练习；上述结构检查失败时不会覆盖已有成品。这些检查不证明内容正确或全覆盖。
@@ -107,16 +109,18 @@ output/课程名/
 
 ```powershell
 python -m pip install -r requirements.txt
-python -m unittest discover -s tests -v
-python scripts/compile_html.py examples/vector-notes.md examples/vector-course --title '向量自学读物示例'
+python -X utf8 -m unittest discover -s tests -v
+python -X utf8 scripts/compile_html.py examples/vector-notes.md examples/vector-course
 ```
 
 打开 `examples/vector-course/index.html`，按覆盖模板中的 HTML 检查项核对三个独立章节及小课堂。示例母稿仍为 `examples/vector-notes.md`，只演示排版与交互。仓库内有 `.venv` 时可用 `./.venv/Scripts/python.exe` 替换 `python`。
 
+已提交的示例按上面的无 `--title` 命令生成，沿用母稿标题“用两支向量，拼出一次移动”；`--title` 仅在需要自定义标题时添加。`compile_html.py` 的标准输出和标准错误统一使用 UTF-8，包括成功消息、报错和 `--help`；接收管道或读取日志时也按 UTF-8 解码。旧 Windows 终端如仍乱码，可先在当前终端执行 `chcp 65001`，再运行命令；这不更改生成的 HTML 文件编码。
+
 维护者可另运行真实浏览器检查：
 
 ```powershell
-python tests/verify_reader_browser.py
+python -X utf8 tests/verify_reader_browser.py
 ```
 
 该检查需要额外安装 Playwright 并有本机 Edge；学生阅读无需这些工具。自动检查通过仍须对照真实课件查看内容与页面，不能替代覆盖核销和必要的视觉判断。

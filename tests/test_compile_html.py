@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import json
 from html.parser import HTMLParser
 from pathlib import Path
@@ -762,6 +763,29 @@ class CompileHTMLTests(unittest.TestCase):
         self.assertIn(str(folder), result.stdout)
         self.assertTrue((folder / 'index.html').is_file())
         self.assertFalse(self.target.exists())
+
+    def test_cli_success_is_utf8_even_when_parent_requests_gbk(self):
+        self.source.write_text('# 中文课程\n\n## 第一章\n\n正文。', encoding='utf-8')
+        folder = self.directory / '交付课程📚'
+        env = dict(os.environ, PYTHONIOENCODING='gbk')
+        result = subprocess.run([sys.executable, str(SCRIPT), str(self.source), str(folder)],
+                                capture_output=True, env=env)
+        self.assertEqual(result.returncode, 0, result.stderr.decode('utf-8', errors='replace'))
+        self.assertIn('已生成课程文件夹', result.stdout.decode('utf-8'))
+        self.assertIn(str(folder), result.stdout.decode('utf-8'))
+        self.assertTrue((folder / 'index.html').is_file())
+
+    def test_cli_errors_and_help_are_utf8_even_when_parent_requests_gbk(self):
+        env = dict(os.environ, PYTHONIOENCODING='gbk')
+        cases = [
+            (['--help'], 0, 'stdout', '完整课程文件夹'),
+            ([str(self.source), str(self.target.parent)], 1, 'stderr', '无法生成教程'),
+        ]
+        for arguments, status, stream, message in cases:
+            with self.subTest(arguments=arguments):
+                result = subprocess.run([sys.executable, str(SCRIPT), *arguments], capture_output=True, env=env)
+                self.assertEqual(result.returncode, status)
+                self.assertIn(message, getattr(result, stream).decode('utf-8'))
 
     def test_folder_api_rejects_an_html_filename_or_an_existing_file(self):
         self.source.write_text('# 课程\n\n正文。', encoding='utf-8')
