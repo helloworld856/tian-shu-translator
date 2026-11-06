@@ -814,7 +814,7 @@ def _compile_pages(source: Path, target: Path, title: str | None,
         fragment = re.sub(r'<h([1-6])(\s[^>]*)?>(.*?)</h\1>', lambda m: f'<h1{m.group(2) or ""}>{m.group(3)}</h1>', fragment, count=1, flags=re.S)
         lesson_content = (
             '<a class="skip-link" href="#content">跳到正文</a>'
-            '<header class="site-header"><p class="subtitle">先修小课堂</p></header>'
+            '<header class="site-header"><p class="subtitle">术语小课堂</p></header>'
             f'<main id="content" class="course-content">{fragment}'
             '<p class="lesson-note">读完后，切回原来的教程标签页即可继续阅读。</p></main>'
         )

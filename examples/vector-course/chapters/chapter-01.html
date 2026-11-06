@@ -763,6 +763,7 @@ hr {
 <p>功能演示，题目自编，无真实课件页码。未提供原始资料，本文不包含 PDF 原题；讲解、示范与练习均为自编。</p>
 </blockquote>
 <p>从目录选一章，会另开一个标签页，目录留在原处。章内可以点小节跳到想看的地方，读到页尾还可以接着看上一章或下一章。小课堂也会另开标签页，读完切回正文，就能接着读。</p>
+<p>章首图里的名词还不熟悉也没关系，可以先往下读正文，学完再回来看它们怎样连在一起。文中的术语预告也可以先跳过，想提前了解时再点开。</p>
 
 <h3 id="用坐标记下一次移动">用坐标记下一次移动</h3>
 <p>如果要告诉别人你在方格纸上移动了多少，只说“向右”“向上”还不够，还要说各走了几步。把方向和移动量一起记下来，才方便计算走完几段路后的总移动。在这个例子里，我们用向量记录一次移动。</p>
@@ -777,7 +778,7 @@ hr {
 <p>再按向量相加的规则，把对应坐标相加：</p>
 <div class="math-block" tabindex="0" aria-label="公式"><math aria-label="a u+b v=(a,0)+(b,b)=(a+b,0+b)=(a+b,b)." xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>a</mi><mi>u</mi><mo>&#x0002B;</mo><mi>b</mi><mi>v</mi><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>a</mi><mo>&#x0002C;</mo><mn>0</mn><mo stretchy="false">&#x00029;</mo><mo>&#x0002B;</mo><mo stretchy="false">&#x00028;</mo><mi>b</mi><mo>&#x0002C;</mo><mi>b</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>a</mi><mo>&#x0002B;</mo><mi>b</mi><mo>&#x0002C;</mo><mn>0</mn><mo>&#x0002B;</mo><mi>b</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mi>a</mi><mo>&#x0002B;</mo><mi>b</mi><mo>&#x0002C;</mo><mi>b</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0002E;</mo></mrow></math></div>
 <p>结果的第一个坐标是向右移动的总量 <math aria-label="a+b" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>a</mi><mo>&#x0002B;</mo><mi>b</mi></mrow></math>，第二个坐标是向上移动的总量 <math aria-label="b" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>b</mi></mrow></math>。后面给定目标时，我们就可以利用这两个坐标反过来找系数。</p>
-<p>这种组合还有一个问题：手上的两支向量，究竟能拼出哪些位置？这里它们能拼出平面上的任何一次移动。稍后会看到，把它们并排写进矩阵后，<a id="mention-rank" class="term" href="../lessons/lesson-5607a40e3782029a.html#term-rank" target="_blank" rel="noopener noreferrer" title="在新标签页打开小课堂">矩阵的秩</a>为 <math aria-label="2" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>2</mn></mrow></math>，意思是这里有两个彼此独立的方向。如果“秩”还是陌生词，可以点开新标签页里的小课堂，读完关闭它或切回正文，这里的位置不会动；先继续看怎么算也完全可以。</p>
+<p>这种组合还有一个问题：手上的两支向量，究竟能拼出哪些位置？这里它们能拼出平面上的任何一次移动。后面回看这个范围问题时，可以用<a id="mention-rank" class="term" href="../lessons/lesson-5607a40e3782029a.html#term-rank" target="_blank" rel="noopener noreferrer" title="在新标签页打开小课堂">矩阵的秩</a>描述独立方向的个数；在这里它的值是 <math aria-label="2" xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>2</mn></mrow></math>。这个名词现在可以先跳过，接下来只用数乘和相加来算。想提前看看它在数什么，再点开小课堂即可。</p>
 <nav class="chapter-pagination" aria-label="章节翻页"><a class="index-link" href="../index.html">课程目录</a><a rel="next" href="chapter-02.html#%E7%AC%AC%E4%BA%8C%E7%AB%A0%E8%B7%9F%E7%9D%80%E6%8B%BC%E4%B8%80%E6%AC%A1%E5%88%B0%E8%BE%BE-32">下一章</a></nav></main></div></div>
 <script>
 /* Small, offline enhancements. Ordinary links and details work without JS. */
